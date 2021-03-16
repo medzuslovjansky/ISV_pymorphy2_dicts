@@ -57,3 +57,23 @@ if RUN_BUILD_DICTS:
 import pymorphy2
 morph = pymorphy2.MorphAnalyzer(out_dir)
 print(morph.parse("фунгујут"))
+print()
+
+phrase = "Тутчас можем писати на прдачном језыковєдском нарєчју"
+
+phrase = "нарєчје јест разумливо приблизно всим машинам без ученја"
+
+phrase = "jа уже виджу нєколико проблемов буду чинити"
+
+phrase = "писанйе jедним столбецем дозволjаjе додати информациjу односно двусмыслности"
+
+
+phrase = "чи можем ли jа говорити на прдачном језыковєдском нарєчју в тутом каналу буде ли то добро Jесм поправил нєкаке грєшкы од првого раза"
+
+for word in phrase.replace("й", "j").replace("j", "ј").split(" "):
+
+    parsings = morph.parse(word)
+    desc = " | ".join(f"**{parsing.normal_form}** - {parsing.tag}" for parsing in parsings)
+    print(desc)
+    # print(len(morph.parse(word)))
+    # print(morph.parse(word)[0])

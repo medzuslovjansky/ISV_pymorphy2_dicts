@@ -96,6 +96,7 @@ req_case;требуjє падежа;aux;;;req_case;Наразі відсутни
 (+6);потребує місцевого;req_case;;;rv_loct;
 Abbr;аббревиатура;aux;;;Abbr;
 past;минулий час;tense;;;past;
+future;будучи час;tense;;;futr;
 imperfect;минулий час;tense;;;imperfect;
 1per;1-а особа;PErs;;;1per;
 2per;2-а особа;PErs;;;2per;
@@ -109,6 +110,7 @@ V-be;одглаголно име;aux;;;V-be;
 comparative;порівняльна форма;forms;;;COMP;
 forms;степені порівняння;aux;;;forms;
 positive;базова форма;forms;;;compb;
+conditional;кондиционал;tense;;;cond;
 
 
 

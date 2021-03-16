@@ -257,7 +257,8 @@ class Lemma(object):
         # tags = set(tags) - set([self.pos])
         # TODO: translate tags here
         for one_tag in tags:
-            ET.SubElement(el, "g", v=mapping.lt2opencorpora.get(one_tag, one_tag))
+            if one_tag != '':
+                ET.SubElement(el, "g", v=mapping.lt2opencorpora.get(one_tag, one_tag))
 
     def export_to_xml(self, i, mapping, rev=1):
         lemma = ET.Element("lemma", id=str(i), rev=str(rev))
@@ -304,11 +305,21 @@ def yield_all_simple_adj_forms(forms_obj, pos):
                         yield content[2], {case, "sing", "femn", animatedness} | pos
                     if num == 'plural':
                         masc_form = content[0].split("/")
+                        if len(masc_form) == 1:
+                            if i == 1:
+                                continue
+                            else:
+                                animatedness = ''
                         yield masc_form[i], {case, "plur", "masc", animatedness} | pos
                         yield content[1], {case, "plur", "neut", animatedness} | pos
                         yield content[1], {case, "plur", "femn", animatedness} | pos
                 elif case == "acc":
                     masc_form = content[0].split("/")
+                    if len(masc_form) == 1:
+                        if i == 1:
+                            continue
+                        else:
+                            animatedness = ''
                     if num == 'singular':
                         yield masc_form[i], {case, "sing", "masc", animatedness} | pos
                         yield content[1], {case, "sing", "neut", animatedness} | pos
@@ -318,6 +329,9 @@ def yield_all_simple_adj_forms(forms_obj, pos):
                         yield content[1], {case, "plur", "neut", animatedness} | pos
                         yield content[1], {case, "plur", "femn", animatedness} | pos
                 else:
+                    animatedness = ''
+                    if i == 1:
+                        continue
                     if num == 'singular':
                         yield content[0], {case, "sing", "masc", animatedness} | pos
                         yield content[0], {case, "sing", "neut", animatedness} | pos
@@ -331,11 +345,29 @@ def yield_all_noun_forms(forms_obj, pos, columns):
     for case, data in forms_obj.items():
         for (form, form_name) in zip(data, columns):
             if form is not None:
+                if form_name == "singular (m./f.)":
+                    form_name = "sing"
+                if form_name == "plural (m./f.)":
+                    form_name = "plur"
+                if form_name == "masculine":
+                    form_name = 'masc'
+                # TODO: 
+                if form_name == "feminine/neuter":
+                    yield form, {case, 'femn'} | pos
+                    yield form, {case, 'neut'} | pos
+                    continue
+
+                if form_name == "Word Form" or form_name == "wordForm":
+                    form_name = ''
                 yield form, {case, form_name} | pos
 
 VERB_AUX_WORDS = {'(je)', 'sę', '(sųt)', 'ne'}
 
-def yield_all_verb_forms(forms_obj, pos):
+def yield_all_verb_forms(forms_obj, pos, base):
+
+    is_byti = forms_obj['infinitive'] == 'bytì'
+    # if forms_obj['infinitive'].replace("ì", "i") != base:
+        # print(forms_obj['infinitive'], base)
 
     # ====== L-particle ======
     # ['pluperfect', 'perfect', 'conditional']:
@@ -350,11 +382,29 @@ def yield_all_verb_forms(forms_obj, pos):
     for form, meta in zip(base_forms, tags):
         parts = " ".join([p for p in form.split(" ") if p not in VERB_AUX_WORDS])
         yield parts, meta | pos | {'past'}
+
+    # ====== Conditional ======
+    # ['conditional']:
+    if is_byti:
+        tags = [
+            {'1per', 'sing'},
+            {'2per', 'sing'},
+            {'3per', 'sing'},
+
+            {'1per', 'plur'},
+            {'2per', 'plur'},
+            {'3per', 'plur'},
+        ]
+        time = 'conditional'
+        different_forms = forms_obj[time][:3] + forms_obj[time][5:8]
+        for entry, one_tag in zip(different_forms, tags):
+            subentry = entry.split(" ")[0]
+            yield subentry, pos | {time} | one_tag
+
         
     # ====== Future ======
     # ['future']
     # future uses infinitive and aux verbs
-    pass
 
     # ====== Present and Imperfect ======
     # ['present', 'imperfect']
@@ -366,10 +416,16 @@ def yield_all_verb_forms(forms_obj, pos):
         {'2per', 'plur'},
         {'3per', 'plur'},
     ]
+    relevant_times = ['present', 'imperfect']
+    if is_byti:
+        relevant_times += ['future']
     for time in ['present', 'imperfect']:
         for entry, one_tag in zip(forms_obj[time], tags):
+            if entry.endswith(" (je)"):
+                entry = entry[:-5] + "," + "je"
             for subentry, add_tag in zip(entry.split(","), [set(), {'alt-form'}]):
                 yield subentry, pos | {time} | add_tag | one_tag
+
     # ====== Imperative ======
     imperatives = forms_obj['imperative'].split(',')
     tags = [
@@ -388,6 +444,7 @@ def yield_all_verb_forms(forms_obj, pos):
     ):
         # TODO: will fuck up if multi-word verb
         parts = (forms_obj[time]
+            .replace("ne ", "")
             .replace(",", "").replace("(", "") .replace(")", "")
             .split(" "))
         for i, entry in enumerate(parts):
@@ -427,32 +484,26 @@ def iterate_json(forms_obj, pos_data, base):
         yield content['positive'][1], {"adverb", "positive"} | pos_data
         yield content['comparative'][1], {"adverb", "comparative"} | pos_data
     elif "numeral" in pos or 'pronoun' in pos:
-        print('skipping', base, pos)
-        return base, pos
-        '''
-        if base in ["go", "iže", "jego", "on", "ona", "ono", "one", "oni", "jej", "jemu", "jih", "jihny", "jim", "jų", "mu"]:
-            print(pos)
-            print(base)
-            print(forms_obj)
-            return base, pos
-        # print([[base]])
         if forms_obj['type'] == 'adjective':
-            # print("1, adj")
             yield from  yield_all_simple_adj_forms(forms_obj, pos_data)
-        else:
-            print("1, smth else", forms_obj['type'])
+        elif forms_obj['type'] == 'noun':
             columns = forms_obj['columns']
             yield from yield_all_noun_forms(forms_obj['cases'], pos_data, columns)
-        '''
-    elif "verb" in pos:
-        if base.startswith("ne "):
-            pass
         else:
-            for entry, tag in yield_all_verb_forms(forms_obj, pos_data):
-                if entry.endswith(" sę"):
-                    yield entry[:-3], tag
-                else:
-                    yield entry, tag
+            print("1, smth else", forms_obj['type'])
+            raise AssertionError
+    elif "verb" in pos:
+        error = False
+        for entry, tag in yield_all_verb_forms(forms_obj, pos_data, base):
+            if "ERROR" in entry:
+                error = True
+            if entry.endswith(" sę"):
+                entry = entry[:-3]
+            if base.startswith("ne "):
+                entry = entry[3:]
+            yield entry, tag
+        if error:
+            print(forms_obj, pos_data, base)
     elif "noun" in pos:
         yield from yield_all_noun_forms(forms_obj, pos_data, ['singular', 'plural'])
     return base, pos_data
@@ -478,6 +529,11 @@ class Dictionary(object):
                 raw_data, forms, pos_formatted = line.split("\t")
                 word_id, isv_lemma, addition, pos, *rest = ujson.loads(raw_data)
                 forms_obj = ujson.loads(forms)
+
+                if not isinstance(forms_obj, dict):
+                    if forms_obj != '':
+                        continue
+                        # print([isv_lemma, pos_formatted, forms_obj])
                 if " " in isv_lemma and "," not in isv_lemma and isinstance(forms_obj, dict):
                     splitted = isv_lemma.split()
                     if len(splitted) == 2 and "sę" in splitted:
@@ -485,8 +541,9 @@ class Dictionary(object):
                     else:
                         counter_multiword += 1
                         if "verb" not in pos_formatted:
-                            print(isv_lemma.split(), pos_formatted)
-                            print(forms_obj)
+                            # TODO TODO XXX
+                            # print(isv_lemma.split(), pos_formatted)
+                            # print(forms_obj)
                             counter_multiword_verb += 1
                     
 
@@ -496,6 +553,8 @@ class Dictionary(object):
                 details_set = set(getArr(pos))
                 # if infer_pos is None, then fallback to the first form
                 pos = infer_pos(details_set) or pos
+                if pos == "noun": 
+                    details_set |= {'noun'}
                 current_lemma = Lemma(
                     isv_lemma,
                     lemma_form_tags=details_set,
@@ -519,6 +578,9 @@ class Dictionary(object):
                 if len(number_forms) == 1:
                     numeric = {"Sgtm"} if number_forms == {"singular"} else {"Pltm"}
                     current_lemma.lemma_form.tags |= numeric
+                if pos == "verb":
+                    if forms_obj['infinitive'].replace("ì", "i") != isv_lemma:
+                        current_lemma.lemma_form.form = forms_obj['infinitive']
                 # if "adj" in pos:
                     #if isv_lemma == "žučji":
                     #    print(pos, isv_lemma, pos_formatted)

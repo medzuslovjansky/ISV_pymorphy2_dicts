@@ -19,33 +19,61 @@
 
 **Чи работаjе ли?** Вероjетно, да. Можно, формат експортованого фаjла не jест наjлепши, але главно же оно работаjе.
 
+**Проблем**
 Тутчас имаjемо проблем с именниками, кторе могут имати како мужскы, тако и женскы род.
+
+**Проблем**
+Глаголы, кторе имаjут алтернативне формы (напр., `vladati, vladěti`) имаjут зло склоненьjе.
+
+**Проблем**
+Вероjетно, потрєбно нєчто измыслити однсно совршаного/несовршаного аспекта.
 
 ## _Конверсија до формата OpenCorpora XML_
 Модификована версиjа `LT2OpenCorpora` се користаjе за тут стадију.
 
 **Зачто?**
+
 **Како?** Запустити `convert.py`.
 
 **Чи работаjе ли?** Не пополно.
 * Потрєбно провєрити корректност алтернативных форм: "слова/словеса" jест две формы, "рєчены (рєчена, рєчено)" jест три формы и так далье.
 * Потрєбно провєрити корректност форм глагола "быти" и додати грамем за особливе времена
 * Потрєбно измыслити добро изjасненjе грамем за меджусловjанскы язык (они будут имати разлику с русскими грамемами, jербо егзистуjут алтернативне северне/jужне формы, кратке/полны формы заименников и часованjе глаголов фунгуjе инако)
-* Не jесм уверены, чи правилно ли имати присловник и придавник како различне формы jедного слова.
+* Не jесм уверены, чи правилно ли имати присловник и придавник како различне формы jедного слова. Вероjетно, треба было бы вообче изчркнути формы, подобне `најбоље абхазски` и можно такоже изчркнути формы, подобне `најкомпјутернєјши`
 * Потрєбно измыслити добру обработку вечеj, кторе имаjут нєколико словесов (Lemma = "zadržati dyh", але все формы не имаjут "дых") и возвратных глаголов
 
 ## _Генерациjа словников pymorphy2_
 
 **Зачто?**
+
 **Како?** Склонировать репозиторий `pymorphy2-dicts`
 
 **Чи работаjе ли?** Вєројетно да, але потрєбно изтворити конфиг фаjл, подобны такому:
-* https://github.com/kmike/pymorphy2/blob/master/pymorphy2/lang/ru/config.py
-* https://github.com/kmike/pymorphy2/blob/master/pymorphy2/lang/uk/config.py
-* https://github.com/kmike/pymorphy2/blob/master/pymorphy2/lang/uk/_prefixes.py
+* `https://github.com/kmike/pymorphy2/blob/master/pymorphy2/lang/ru/config.py`
+* `https://github.com/kmike/pymorphy2/blob/master/pymorphy2/lang/uk/config.py`
+* `https://github.com/kmike/pymorphy2/blob/master/pymorphy2/lang/uk/_prefixes.py`
+
+**Проблем**
+Фаjл `suffixes.json` изгледаjе неправилно, але проблем најбоље вероjетно jест в минулом етапу (jа подзирам формы `најбоље`).
+
+**Проблем**
+Формы се дублируjут: 
+```
+>>> morph.parse("добро")
+[
+    Parse(word='добро', tag=OpencorporaTag('ADVB'), normal_form='добро', score=1.0, methods_stack=((DictionaryAnalyzer(), 'добро', 12, 0),)), 
+    Parse(word='добро', tag=OpencorporaTag('NOUN,neut'), normal_form='добро', score=1.0, methods_stack=((DictionaryAnalyzer(), 'добро', 17, 0),)), 
+    Parse(word='добро', tag=OpencorporaTag('NOUN,neut sing,nomn'), normal_form='добро', score=1.0, methods_stack=((DictionaryAnalyzer(), 'добро', 17, 1),)), 
+    Parse(word='добро', tag=OpencorporaTag('NOUN,neut sing,accs'), normal_form='добро', score=1.0, methods_stack=((DictionaryAnalyzer(), 'добро', 17, 3),)), 
+    Parse(word='добро', tag=OpencorporaTag('NOUN,neut sing,voct'), normal_form='добро', score=1.0, methods_stack=((DictionaryAnalyzer(), 'добро', 17, 13),)), 
+    ...
+]
+```
+Имамо ту форму `NOUN neut` (лемму?) и форму `NOUN,neut sing, nomn`. Туте формы треба быти jеднаковыми, але разбор има обедве.
 
 ## _Конверсија до формата словников AZ.js_
 
 **Зачто?** Дабы издєлати нєчто подобно http://denull.github.io/Az.js/demo/
+
 **Како?** Jешче не вєм.
 
