@@ -27,6 +27,8 @@ slang;сленг;aux;;;Slng;TODO: фунгуjе
 unknown;ще неопрацьовані слова/форми;aux;;;unknown;Має зникнути взагалі
 pers;особовий (займенник);aux;;;pers;
 alt;альтернативний правопис;aux;;;alt;TODO
+alt1;альтернативны форм 1;aux;;;alt1;
+alt2;альтернативны форм 2;aux;;;alt2;
 noun;именник;post;v_naz;anim,inanim;NOUN;
 pron;заименник;post;v_naz;;NPRO;
 verb;глагол;post;inf;perf,imperf;VERB;
