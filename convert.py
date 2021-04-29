@@ -39,6 +39,16 @@ save_diacrits = str.maketrans(diacr_letters, plain_letters)
 cyr2lat_trans = str.maketrans(cyr_alphabet, lat_alphabet)
 lat2cyr_trans = str.maketrans(lat_alphabet, cyr_alphabet)
 
+nms_alphabet = "ęėåȯųćđřľńťďśź"
+std_alphabet = "eeaoučđrlntdsz"
+
+nms2std_trans = str.maketrans(nms_alphabet, std_alphabet)
+
+extended_nms_alphabet = "áàâāíìîīĭıąǫũéēĕëèœóôŏöòĵĺļǉýłçʒř"
+regular_etym_alphabet = "aaaaiiiiiiųųųeeėėėoooȯȯȯjľľľylczŕ"
+
+ext_nms2std_nms_trans = str.maketrans(extended_nms_alphabet, regular_etym_alphabet)
+
 def lat2cyr(thestring):
 
     # "e^" -> "ê"
@@ -61,9 +71,22 @@ def lat2cyr(thestring):
         "љ", "ль").replace("њ", "нь").replace(
         # Russian
         "я", "йа").replace("ю", "йу").replace("ё", "йо")
-        
+
     return filtered.translate(lat2cyr_trans).replace("й", "ј").replace("ь", "ј").strip()
 
+
+def lat2etm(thestring):
+    return thestring.translate(ext_nms2std_nms_trans).strip()
+
+
+def lat2std(thestring):
+    return thestring.translate(nms2std_trans).replace("đ", "dž").strip()
+
+translation_functions = {
+    "isv_cyr": lat2cyr,
+    "isv_lat": lat2std,
+    "isv_etm": lat2etm,
+}
 
 def infer_pos(arr):
     if 'adj' in arr:
@@ -260,7 +283,8 @@ class Lemma(object):
             if one_tag != '':
                 ET.SubElement(el, "g", v=mapping.lt2opencorpora.get(one_tag, one_tag))
 
-    def export_to_xml(self, i, mapping, rev=1):
+    def export_to_xml(self, i, mapping, rev=1, lang="isv_cyr"):
+        translate_func = translation_functions[lang]
         lemma = ET.Element("lemma", id=str(i), rev=str(rev))
         common_tags = list(self.common_tags or set())
 
@@ -271,17 +295,18 @@ class Lemma(object):
             return None
 
         output_lemma_form = self.lemma_form.form.lower()
-        output_lemma_form = lat2cyr(output_lemma_form)
+        output_lemma_form = translate_func(output_lemma_form)
         l_form = ET.SubElement(lemma, "l", t=output_lemma_form)
         self._add_tags_to_element(l_form, common_tags, mapping)
 
         for forms in self.forms.values():
             for form in forms:
                 output_form = form.form.lower()
-                output_form = lat2cyr(output_form)
+                output_form = translate_func(output_form)
                 el = ET.Element("f", t=output_form)
                 if form.is_lemma:
-                    lemma.insert(1, el)
+                    pass
+                    # lemma.insert(1, el)
                 else:
                     lemma.append(el)
 
@@ -606,7 +631,7 @@ class Dictionary(object):
         if lemma is not None:
             self.lemmas[lemma.lemma_signature] = lemma
 
-    def export_to_xml(self, fname):
+    def export_to_xml(self, fname, lang="isv_cyr"):
         tag_set_full = TagSet(self.mapping)
         root = ET.Element("dictionary", version="0.2", revision="1")
         tree = ET.ElementTree(root)
@@ -615,7 +640,7 @@ class Dictionary(object):
         known_pronouns = {}
 
         for i, lemma in enumerate(self.lemmas.values()):
-            lemma_xml = lemma.export_to_xml(i + 1, tag_set_full)
+            lemma_xml = lemma.export_to_xml(i + 1, tag_set_full, lang=lang)
             if lemma_xml is not None:
                 # if "NPRO" in lemma.lemma_form.tags:
                 # if "NPRO" in str(lemma_xml):
@@ -630,6 +655,7 @@ class Dictionary(object):
                         continue
                     else:
                         known_pronouns[signature] = lemma.lemma_form.form
+                        print(f"=> SAVING: {lemma.lemma_form.form}")
                     #print(lemma_xml)
                     #print(lemma_xml.write())
                 lemmata.append(lemma_xml)
