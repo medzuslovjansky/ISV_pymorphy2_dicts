@@ -17,9 +17,9 @@ def log_doubleform(sender, tags_signature):
 
 DIR = "C:\\dev"
 DEBUG = True
-RUN_EXPORT = False
-RUN_CONVERT = False
-RUN_BUILD_DICTS = False
+RUN_EXPORT = True
+RUN_CONVERT = True
+RUN_BUILD_DICTS = True
 
 if RUN_EXPORT:
     subprocess.check_output(
@@ -73,11 +73,17 @@ from pymorphy2 import units
 
 
 out_dir_etm = join(DIR, "pymorphy2-dicts", "out_isv_etm")
+
 etm_morph = pymorphy2.MorphAnalyzer(
     out_dir_etm,
-    units=[pymorphy2.units.DictionaryAnalyzer()],
-    char_substitutes={'e': 'ě', 'a': 'å', 'u': 'ų'}
+    units=[pymorphy2.units.DictionaryAnalyzer(), pymorphy2.units.KnownSuffixAnalyzer()],
+    char_substitutes={
+        'e': 'ě', 'c': 'č', 'z': 'ž', 's': 'š',
+        'a': 'å', 'u': 'ų', 'č': 'ć', 'e': 'ę',
+        # 'dž': 'đ' # ne funguje
+    }
 )
+
 print(etm_morph.parse("ljudij"))
 print(etm_morph.parse("råzumějų"))
 print(etm_morph.parse("razumeju"))

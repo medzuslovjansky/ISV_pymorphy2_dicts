@@ -470,6 +470,8 @@ def yield_all_verb_forms(forms_obj, pos, base):
         # TODO: will fuck up if multi-word verb
         parts = (forms_obj[time]
             .replace("ne ", "")
+            .replace("ši sá", "ša sę").replace("ši sé", "še sę")   # THIS MAKES PARSER NON STANDARD COMPLIANT
+            .replace(" sę", "")
             .replace(",", "").replace("(", "") .replace(")", "")
             .split(" "))
         for i, entry in enumerate(parts):
@@ -542,6 +544,7 @@ def iterate_json(forms_obj, pos_data, base):
 
     
 base_tag_set = {}
+INDECLINABLE_POS = {'adverb', 'conjunction', 'preposition', 'interjection', 'particle'} 
 
 
 class Dictionary(object):
@@ -562,33 +565,51 @@ class Dictionary(object):
                 word_id, isv_lemma, addition, pos, *rest = ujson.loads(raw_data)
                 forms_obj_array = ujson.loads(forms)
 
+                # HOTFIX TIME!
+                if word_id == "36454":
+                    pos = "adj."
+                if word_id == "36649":
+                    pos = "f."
+
                 for form_num, forms_obj in enumerate(forms_obj_array):
                     add_tag = set() if form_num == 0 else {f"alt{form_num}"}
-                    if not isinstance(forms_obj, dict):
-                        if forms_obj != '':
-                            continue
-                            # print([isv_lemma, pos_formatted, forms_obj])
-                    if " " in isv_lemma and "," not in isv_lemma and isinstance(forms_obj, dict):
-                        splitted = isv_lemma.split()
-                        if len(splitted) == 2 and "sę" in splitted:
-                            counter_se += 1
-                        else:
-                            counter_multiword += 1
-                            if "verb" not in pos_formatted:
-                                # TODO TODO XXX
-                                # print(isv_lemma.split(), pos_formatted)
-                                # print(forms_obj)
-                                counter_multiword_verb += 1
-                        
-
-                    # Here we've found a new lemma, let's add old one to the list
-                    # and continue
 
                     details_set = set(getArr(pos)) | add_tag
                     # if infer_pos is None, then fallback to the first form
                     pos = infer_pos(details_set) or pos
                     if pos == "noun": 
                         details_set |= {'noun'}
+
+                    if not isinstance(forms_obj, dict):
+                        if forms_obj != '':
+                            # add isolated lemma
+
+                            if pos in INDECLINABLE_POS and " " not in isv_lemma:
+                                current_lemma = Lemma(
+                                    isv_lemma,
+                                    lemma_form_tags=details_set,
+                                )
+                                current_lemma.add_form(WordForm(
+                                    isv_lemma,
+                                    tags=details_set,
+                                ))
+                                self.add_lemma(current_lemma)
+                            continue
+                    if " " in isv_lemma and "," not in isv_lemma and isinstance(forms_obj, dict):
+                        splitted = isv_lemma.split()
+                        if len(splitted) == 2 and "sę" in splitted:
+                            counter_se += 1
+                        else:
+                            counter_multiword += 1
+                            # TODO TODO XXX
+                            if "verb" not in pos_formatted:
+                                counter_multiword_verb += 1
+                                print(isv_lemma.split(), pos_formatted)
+                                print(forms_obj)
+                            else:
+                                print(isv_lemma.split(), pos_formatted, forms_obj['infinitive'])
+                        # continue
+
                     current_lemma = Lemma(
                         isv_lemma,
                         lemma_form_tags=details_set,
@@ -615,6 +636,9 @@ class Dictionary(object):
                     if pos == "verb":
                         if forms_obj['infinitive'].replace("ì", "i") != isv_lemma:
                             current_lemma.lemma_form.form = forms_obj['infinitive']
+                    if pos == "pronoun":
+                        # replace го -> он
+                        pass
                     # if "adj" in pos:
                         #if isv_lemma == "žučji":
                         #    print(pos, isv_lemma, pos_formatted)
@@ -645,17 +669,17 @@ class Dictionary(object):
                 # if "NPRO" in lemma.lemma_form.tags:
                 # if "NPRO" in str(lemma_xml):
                 if "pron" in lemma.lemma_form.tags:
-                    print(lemma.lemma_form.tags, lemma.lemma_form.form)
+                    # print(lemma.lemma_form.tags, lemma.lemma_form.form)
                     signature = "|".join(
                         f"{k}: {v[0].form}" for i, (k, v) in enumerate(lemma.forms.items())
                         if i != 0
                     )
                     if signature in known_pronouns:
-                        print(known_pronouns[signature], "<-", lemma.lemma_form.form)
+                        # print(known_pronouns[signature], "<-", lemma.lemma_form.form)
                         continue
                     else:
                         known_pronouns[signature] = lemma.lemma_form.form
-                        print(f"=> SAVING: {lemma.lemma_form.form}")
+                        # print(f"=> SAVING: {lemma.lemma_form.form}")
                     #print(lemma_xml)
                     #print(lemma_xml.write())
                 lemmata.append(lemma_xml)
