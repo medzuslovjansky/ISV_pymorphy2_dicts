@@ -17,7 +17,7 @@ def log_doubleform(sender, tags_signature):
 
 DIR = "C:\\dev"
 DEBUG = True
-RUN_EXPORT = True
+RUN_EXPORT = False
 RUN_CONVERT = True
 RUN_BUILD_DICTS = True
 

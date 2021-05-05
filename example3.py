@@ -34,6 +34,9 @@ if __name__ == "__main__":
 
     text = "Naša misija jest govoriti najvyše råzumlivo, zato dělamo eksperimenty, čęsto pytajemo ljudi i diskutujemo o tom kako ulěpšati naše govorenje. Zato takože čęsto napominamo ljudi, kaki dělajųt pogrěšky, aby govorili drugo. To sųt vsegda sověty a tvoje govorenje to nakraj jest tvoj izbor. My prosto staramo sę byti možlivo najvyše råzumlivi"
 
+    text = "on je pisal, ona je pisala, oni sut pisali. Ja jesm pisavša. Piši i ty, jerbo pisano slovo jest dobro"
+    print(etm_morph.parse("pisanje"))
+
     cnt = Counter()
     for word in text.replace(".", "").replace(",", "").split(" "):
         forms = [v.normal_form for v in etm_morph.parse(word)]

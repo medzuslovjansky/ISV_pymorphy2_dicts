@@ -394,6 +394,9 @@ def yield_all_verb_forms(forms_obj, pos, base):
     # if forms_obj['infinitive'].replace("ì", "i") != base:
         # print(forms_obj['infinitive'], base)
 
+    # ====== Infinitive ======
+    yield forms_obj['infinitive'], pos | {"INFN"}
+
     # ====== L-particle ======
     # ['pluperfect', 'perfect', 'conditional']:
     tags = [
@@ -448,7 +451,8 @@ def yield_all_verb_forms(forms_obj, pos, base):
         for entry, one_tag in zip(forms_obj[time], tags):
             if entry.endswith(" (je)"):
                 entry = entry[:-5] + "," + "je"
-            for subentry, add_tag in zip(entry.split(","), [set(), {'alt-form'}]):
+            # TODO: check em i vem
+            for subentry, add_tag in zip(entry.split(","), [{"alt-u"}, {'alt-m'}]):
                 yield subentry, pos | {time} | add_tag | one_tag
 
     # ====== Imperative ======
@@ -488,9 +492,6 @@ def yield_all_verb_forms(forms_obj, pos, base):
                 else:
                     full_entry = entry
                 yield full_entry, pos | meta_tag | current_tag
-
-    # ====== Infinitive ======
-    yield forms_obj['infinitive'], pos | {"INFN"}
 
     # ====== Gerund ======
     yield forms_obj['gerund'], pos | {"NOUN", "V-be"}

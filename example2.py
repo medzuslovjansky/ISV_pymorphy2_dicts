@@ -65,6 +65,7 @@ if __name__ == "__main__":
 
     # grad: gråd = town // grad = hail
 
+    text_stnd = "Myslim že to bude pomočno za razvitu flavorizaciju. Toj tekst v razvitoj {LANG} flavorizaciji bude izgledati tako. Take prěměny mogut pomagati v učenju i razuměnju MS i drugyh slovjanskyh jezykov. Takože to jest važny krok v tvorjenju mehanizma avtomatičnogo prěklada.".replace(".", "").replace(",", "")
     print()
     for word in text.split(" "):
         print(dodavaj_bukvy(word, etm_morph), end=" ")

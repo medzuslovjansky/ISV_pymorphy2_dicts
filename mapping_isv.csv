@@ -53,7 +53,7 @@ m;мужскы;gndr;;;masc;
 f;женскы;gndr;;;femn;
 n;средни;gndr;;;neut;
 v;глагол;post;;;VERB;
-conj;;post;;;conj;
+conj;;post;;;CONJ;
 pf;доконане;aspc;;;perf;
 ipf;недоконане;aspc;;;impf;
 ipf/pf;недоконане или доконане;aspc;;;ipun;
@@ -83,7 +83,6 @@ refl1;тип местоимения;aux;;;refl1;может быть тэгом �
 adjective;;;;;ADJF;
 adverb;;;;;ADVB;
 conjunction;;;;;conj;
-preposition;;;;;prep;
 pronoun;;;;;NPRO;
 numeral;;;;;NUMR;
 interjection;;;;;INTJ;
