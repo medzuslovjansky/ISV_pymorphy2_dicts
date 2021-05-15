@@ -1,42 +1,16 @@
 import pymorphy2
 import argparse
+from constants import VERB_PREFIXES, SIMPLE_DIACR_SUBS, ETM_DIACR_SUBS, DEFAULT_UNITS
 
-VERB_PREFIXES = [
-    'do', 'iz', 'izpo', 'nad', 'na', 'ne', 'ob', 'odpo', 'od', 'o', 'prědpo',
-    'pod', 'po', 'prě', 'pre', 'pri', 'pro', 'råzpro', 'razpro', 'råz', 'raz',
-    'sȯ', 's', 'u', 'vȯ', 'vo', 'v', 'vȯz', 'voz', 'vy', 'za',
-]
-
-SIMPLE_DIACR_SUBS = {
-    'e': 'ě', 'c': 'č', 'z': 'ž', 's': 'š',
-}
-# NOTE: pymorphy2 cannot work with several changes, i.e. {'e': 'ě', 'e': 'ę'}
-ETM_DIACR_SUBS = {
-    'a': 'å', 'u': 'ų', 'č': 'ć', 'e': 'ę',
-    # 'dž': 'đ' # ne funguje
-}
-
-DEFAULT_UNITS = [
-    [
-        pymorphy2.units.DictionaryAnalyzer()
-    ],
-    pymorphy2.units.KnownPrefixAnalyzer(known_prefixes=VERB_PREFIXES),
-    [
-        pymorphy2.units.UnknownPrefixAnalyzer(),
-        pymorphy2.units.KnownSuffixAnalyzer()
-    ]
-]
 
 def dodavaj_bukvy(word, etm_morph):
-    # if "gl" in word:
-    #     print(word)
-    #     print(etm_morph.parse(word))
     corrected = [f.word for f in etm_morph.parse(word)]
     if len(set(corrected)) == 1:
         return corrected[0]
     if len(set(corrected)) == 0:
         return word + "/?"
     return "/".join(set(corrected))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -59,26 +33,28 @@ if __name__ == "__main__":
 
     text = "ja funguju i razuměju avtododavanje etymologičnyh bukv"
 
-    text_smpl = "hcu preporuciti gledi pese troicky most v gradu celjabinsku zeđam foto za zenu"
-    text_stnd = "hču prěporučiti gledi pěše troicky most v gradu čeljabinsku žeđam foto za ženu"
-    text_full = "hćų prěporųčiti ględi pěše troicky most v grådu čeljabinsku žeđam foto za ženu"
+    text_smpl = "po mojemu mnenju hcu preporuciti gledi pese troicky most v gradu celjabinsku zeđam foto za zenu"
+    text_stnd = "po mojemu mněnju hču prěporučiti gledi pěše troicky most v gradu čeljabinsku žeđam foto za ženu"
+    text_full = "po mojemu mněńju hćų prěporųčiti ględi pěše troicky most v grådu čeljabinsku žeđam foto za ženu"
 
     # grad: gråd = town // grad = hail
 
-    text_stnd = "Myslim že to bude pomočno za razvitu flavorizaciju. Toj tekst v razvitoj {LANG} flavorizaciji bude izgledati tako. Take prěměny mogut pomagati v učenju i razuměnju MS i drugyh slovjanskyh jezykov. Takože to jest važny krok v tvorjenju mehanizma avtomatičnogo prěklada.".replace(".", "").replace(",", "")
     print()
     for word in text.split(" "):
         print(dodavaj_bukvy(word, etm_morph), end=" ")
     print()
     print()
 
+    print(text_smpl)
     fixed_text = " ".join(dodavaj_bukvy(word, std_morph) for word in text_smpl.split(" "))
+    print("=== ADD SIMPLE DIACRITICS ===")
     print(fixed_text)
     print()
     print(text_stnd)
-    print("------")
+    print("=== ADD ETYMOLOGICAL DIACRITICS ===")
     fixed_text = " ".join(dodavaj_bukvy(word, etm_morph) for word in text_stnd.split(" "))
     print(fixed_text)
     print()
+    print("=== GROUND TRUTH ===")
     print(text_full)
     print()

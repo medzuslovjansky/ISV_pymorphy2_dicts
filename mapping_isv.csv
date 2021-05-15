@@ -26,6 +26,9 @@ inan;неодушевлённое;ANim;;;inan;
 slang;сленг;aux;;;Slng;TODO: фунгуjе
 unknown;ще неопрацьовані слова/форми;aux;;;unknown;Має зникнути взагалі
 pers;особовий (займенник);aux;;;pers;
+form-full;;aux;;;form-full;njego
+form-regl;;aux;;;form-regl;jego
+form-short;;aux;;;form-short;go
 alt;альтернативний правопис;aux;;;alt;TODO
 alt1;альтернативны форм 1;aux;;;alt1;
 alt2;альтернативны форм 2;aux;;;alt2;
@@ -37,6 +40,7 @@ adjp;причастие;post;m,v_naz;;PRTF;
 adv;присловник;post;;;ADVB;
 advp;деjепричастие;post;;;GRND;
 prep;прєдложник;post;;;PREP;
+preposition;прєдложник;post;;;PREP;
 num;числительное;post;;;NUMR;
 sg;;NMbr;;;sing;
 pl;;NMbr;;;plur;

@@ -39,13 +39,13 @@ save_diacrits = str.maketrans(diacr_letters, plain_letters)
 cyr2lat_trans = str.maketrans(cyr_alphabet, lat_alphabet)
 lat2cyr_trans = str.maketrans(lat_alphabet, cyr_alphabet)
 
-nms_alphabet = "ęėåȯųćđřľńťďśź"
-std_alphabet = "eeaoučđrlntdsz"
+nms_alphabet = "ęėåȯųćđřŕľńťďśźìóáýéíĵœ"
+std_alphabet = "eeaoučđrrlntdszioayeijo"
 
 nms2std_trans = str.maketrans(nms_alphabet, std_alphabet)
 
-extended_nms_alphabet = "áàâāíìîīĭıąǫũéēĕëèœóôŏöòĵĺļǉýłçʒř"
-regular_etym_alphabet = "aaaaiiiiiiųųųeeėėėoooȯȯȯjľľľylczŕ"
+extended_nms_alphabet = "áàâāíìîīĭıąǫũéēĕëèœóôŏöòĵĺļǉýłçʒřťȯďś"
+regular_etym_alphabet = "aaaaiiiiiiųųųeeėėėoooȯȯȯjľľľylczŕtods"
 
 ext_nms2std_nms_trans = str.maketrans(extended_nms_alphabet, regular_etym_alphabet)
 
@@ -299,14 +299,15 @@ class Lemma(object):
         l_form = ET.SubElement(lemma, "l", t=output_lemma_form)
         self._add_tags_to_element(l_form, common_tags, mapping)
 
+
         for forms in self.forms.values():
             for form in forms:
                 output_form = form.form.lower()
                 output_form = translate_func(output_form)
                 el = ET.Element("f", t=output_form)
                 if form.is_lemma:
-                    pass
-                    # lemma.insert(1, el)
+                    if len(self.forms) == 1:
+                        lemma.insert(1, el)
                 else:
                     lemma.append(el)
 
@@ -384,7 +385,19 @@ def yield_all_noun_forms(forms_obj, pos, columns):
 
                 if form_name == "Word Form" or form_name == "wordForm":
                     form_name = ''
-                yield form, {case, form_name} | pos
+                if "(" in form:
+                    all_subforms = [form]
+                    if (" (" in form or ") " in form):
+                        all_subforms = form.split(" ")
+                    for subform in all_subforms:
+                        if subform.strip("()") == subform[1:-1]:
+                            yield subform[1:-1], {case, form_name, "form-short"} | pos
+                        else:
+                            yield re.sub(r'\(.*?\)', '', subform), {case, form_name, "form-regl"} | pos
+                            yield subform.replace("(", "").replace(")", ""), {case, form_name, "form-full"} | pos
+
+                else:
+                    yield form, {case, form_name} | pos
 
 VERB_AUX_WORDS = {'(je)', 'sę', '(sųt)', 'ne'}
 
@@ -447,7 +460,7 @@ def yield_all_verb_forms(forms_obj, pos, base):
     relevant_times = ['present', 'imperfect']
     if is_byti:
         relevant_times += ['future']
-    for time in ['present', 'imperfect']:
+    for time in relevant_times:
         for entry, one_tag in zip(forms_obj[time], tags):
             if entry.endswith(" (je)"):
                 entry = entry[:-5] + "," + "je"
@@ -520,7 +533,22 @@ def iterate_json(forms_obj, pos_data, base):
 
     elif "numeral" in pos or 'pronoun' in pos:
         if forms_obj['type'] == 'adjective':
-            yield from  yield_all_simple_adj_forms(forms_obj, pos_data)
+            for form, pos_data in yield_all_simple_adj_forms(forms_obj, pos_data):
+                if "(" in form:
+                    # TODO: will fuck up on stuff like "dati (n)jemu (mu)"
+                    all_subforms = [form]
+                    if (" (" in form or ") " in form):
+                        all_subforms = form.split(" ")
+                    for subform in all_subforms:
+                        if subform.strip("()") == subform[1:-1]:
+                            yield subform[1:-1], {"form-short"} | pos_data
+                        else:
+                            yield re.sub(r'\(.*?\)', '', subform), {"form-regl"} | pos_data
+                            yield subform.replace("(", "").replace(")", ""), {"form-full"} | pos_data
+                else:
+                    yield form, pos_data
+
+
         elif forms_obj['type'] == 'noun':
             columns = forms_obj['columns']
             yield from yield_all_noun_forms(forms_obj['cases'], pos_data, columns)
@@ -545,7 +573,7 @@ def iterate_json(forms_obj, pos_data, base):
 
     
 base_tag_set = {}
-INDECLINABLE_POS = {'adverb', 'conjunction', 'preposition', 'interjection', 'particle'} 
+INDECLINABLE_POS = {'adverb', 'conjunction', 'preposition', 'interjection', 'particle', 'pronoun', 'numeral'} 
 
 
 class Dictionary(object):
@@ -572,9 +600,18 @@ class Dictionary(object):
                 if word_id == "36649":
                     pos = "f."
 
-                for form_num, forms_obj in enumerate(forms_obj_array):
-                    add_tag = set() if form_num == 0 else {f"alt{form_num}"}
+                add_tags = [{f"alt{form_num+1}"} for form_num, _ in enumerate(forms_obj_array)]
 
+                if len(add_tags) == 1:
+                    add_tags = [set()]
+
+                isv_lemmas = isv_lemma.split(",")
+                if "m./f." in pos:
+                    isv_lemmas = [isv_lemma, isv_lemma]
+                    add_tags = [{'masc'}, {'femn'}]
+                for add_tag, forms_obj, isv_lemma_current in zip(add_tags, forms_obj_array, isv_lemmas):
+
+                    isv_lemma_current = isv_lemma_current.strip()
                     details_set = set(getArr(pos)) | add_tag
                     # if infer_pos is None, then fallback to the first form
                     pos = infer_pos(details_set) or pos
@@ -585,19 +622,25 @@ class Dictionary(object):
                         if forms_obj != '':
                             # add isolated lemma
 
-                            if pos in INDECLINABLE_POS and " " not in isv_lemma:
+                            if pos in INDECLINABLE_POS and " " not in isv_lemma_current:
                                 current_lemma = Lemma(
-                                    isv_lemma,
+                                    isv_lemma_current,
                                     lemma_form_tags=details_set,
                                 )
                                 current_lemma.add_form(WordForm(
-                                    isv_lemma,
+                                    isv_lemma_current,
                                     tags=details_set,
                                 ))
                                 self.add_lemma(current_lemma)
+                                if False and isv_lemma_current == "sam":
+                                    print(pos, isv_lemma, add_tag, forms_obj)
+                                    print(pos in INDECLINABLE_POS and " " not in isv_lemma_current)
+                                    print(details_set)
+                                    print(current_lemma)
+                                    raise NameError
                             continue
-                    if " " in isv_lemma and "," not in isv_lemma and isinstance(forms_obj, dict):
-                        splitted = isv_lemma.split()
+                    if " " in isv_lemma_current and isinstance(forms_obj, dict):
+                        splitted = isv_lemma_current.split()
                         if len(splitted) == 2 and "sę" in splitted:
                             counter_se += 1
                         else:
@@ -605,24 +648,24 @@ class Dictionary(object):
                             # TODO TODO XXX
                             if "verb" not in pos_formatted:
                                 counter_multiword_verb += 1
-                                print(isv_lemma.split(), pos_formatted)
+                                print(isv_lemma_current.split(), pos_formatted)
                                 print(forms_obj)
                             else:
-                                print(isv_lemma.split(), pos_formatted, forms_obj['infinitive'])
+                                print(isv_lemma_current.split(), pos_formatted, forms_obj['infinitive'])
                         # continue
 
                     current_lemma = Lemma(
-                        isv_lemma,
+                        isv_lemma_current,
                         lemma_form_tags=details_set,
                     )
                     number_forms = set()
-                    for current_form, tag_set in iterate_json(forms_obj, details_set, isv_lemma):
+                    for current_form, tag_set in iterate_json(forms_obj, details_set, isv_lemma_current):
                         if "/" in current_form:
                             all_forms = current_form.split("/")
                         else:
                             all_forms = [current_form]
                         if len(all_forms) > 2:
-                            print(isv_lemma, all_forms)
+                            print(isv_lemma_current, all_forms)
                             raise NameError
                         for single_form, add_tag in zip(all_forms, [set(), {"alt-form"}]):
                             current_lemma.add_form(WordForm(
@@ -632,21 +675,25 @@ class Dictionary(object):
                         if pos in {"noun", "numeral"}:
                             number_forms |= {one_tag for one_tag in tag_set if one_tag in ['singular', 'plural']}
                     if len(number_forms) == 1:
+                        if number_forms != {"singular"} and number_forms != {"plural"}:
+                            print(number_forms, current_lemma.lemma_form.form)
+                            raise NameError
                         numeric = {"Sgtm"} if number_forms == {"singular"} else {"Pltm"}
-                        current_lemma.lemma_form.tags |= numeric
+                        current_lemma.common_tags |= numeric
                     if pos == "verb":
-                        if forms_obj['infinitive'].replace("ì", "i") != isv_lemma:
+                        if forms_obj['infinitive'].replace("ì", "i") != isv_lemma_current:
                             current_lemma.lemma_form.form = forms_obj['infinitive']
                     if pos == "pronoun":
-                        # replace го -> он
+                        # this will be processed later
                         pass
-                    # if "adj" in pos:
-                        #if isv_lemma == "žučji":
-                        #    print(pos, isv_lemma, pos_formatted)
-                        #    print(raw_data)
-                        #    print(isv_lemma)
-                        #    print (current_lemma.lemma_form.tags)
-                        #    raise NameError
+                    # TODO: sth is wrong here... :(
+                    if "femn" in details_set and word_id == "18571":
+                        print(pos, isv_lemma_current, add_tag, forms_obj)
+                        print(current_lemma.lemma_form.tags)
+                        print(current_lemma)
+                        for k, translate_func in translation_functions.items():
+                            print(current_lemma.lemma_form.form, translate_func(current_lemma.lemma_form.form))
+                        # raise NameError
                     self.add_lemma(current_lemma)
         print(counter_multiword)
         print(counter_multiword_verb)
@@ -666,6 +713,9 @@ class Dictionary(object):
 
         for i, lemma in enumerate(self.lemmas.values()):
             lemma_xml = lemma.export_to_xml(i + 1, tag_set_full, lang=lang)
+            if lemma.lemma_form.form == "zapad":
+                print(ET.tostring(lemma_xml))
+                print(i+1)
             if lemma_xml is not None:
                 # if "NPRO" in lemma.lemma_form.tags:
                 # if "NPRO" in str(lemma_xml):
@@ -675,14 +725,14 @@ class Dictionary(object):
                         f"{k}: {v[0].form}" for i, (k, v) in enumerate(lemma.forms.items())
                         if i != 0
                     )
-                    if signature in known_pronouns:
-                        # print(known_pronouns[signature], "<-", lemma.lemma_form.form)
-                        continue
-                    else:
-                        known_pronouns[signature] = lemma.lemma_form.form
-                        # print(f"=> SAVING: {lemma.lemma_form.form}")
-                    #print(lemma_xml)
-                    #print(lemma_xml.write())
+
+                    if signature:
+                        if signature in known_pronouns:
+                            # print(known_pronouns[signature], "<-", lemma.lemma_form.form)
+                            continue
+                        else:
+                            known_pronouns[signature] = lemma.lemma_form.form
+                            # print(f"=> SAVING: {lemma.lemma_form.form}")
                 lemmata.append(lemma_xml)
 
         tree.write(fname, encoding="utf-8")

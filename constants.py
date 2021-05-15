@@ -28,8 +28,7 @@ DEFAULT_UNITS = [
     ]
 ]
 
-letters = "a-zа-яё"
-letters = "a-zа-яёěčžšåųćęđ"
+letters = "a-zа-яёěčžšåųćęđŕľń"
 BASE_ISV_TOKEN_REGEX = re.compile(
     f'''(?:-|[^{letters}\s"'""«»„“-]+|[0-9{letters}_]+(-?[0-9{letters}_]+)*)''',
     re.IGNORECASE | re.UNICODE

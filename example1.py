@@ -1,23 +1,57 @@
 import pymorphy2
 import argparse
+from constants import VERB_PREFIXES, SIMPLE_DIACR_SUBS, ETM_DIACR_SUBS, DEFAULT_UNITS
+import os
 
-VERB_PREFIXES = [
-    'do', 'iz', 'izpo', 'nad', 'na', 'ne', 'ob', 'odpo', 'od', 'o', 'prědpo',
-    'pod', 'po', 'prě', 'pre', 'pri', 'pro', 'råzpro', 'razpro', 'råz', 'raz',
-    'sȯ', 's', 'u', 'vȯ', 'vo', 'v', 'vȯz', 'voz', 'vy', 'za',
-]
+CS_FLAVOR = {
+    "VERB":
+    {
+        "infn": (-2, 't'),
+        # "1per+sing": (-1, 'u'),
+        "2per+sing": {'aješ': 'áš', 'iš': 'íš'},
+        "3per+sing": {'aje': 'á', 'i': 'í'},
+        "1per+plur": {'ajemo': 'áme', 'imo': 'íme'},
+        "2per+plur": {'ajete': 'áte', 'ite': 'íte'},
+        "3per+plur": {'jųt': 'jí', 'ųt': 'ou', 'ęt': "í"},
+    },
+    "NOUN":
+    {
+        "gent+sing+masc": (-1, "e"),
+        "accs+sing+masc": (-1, "e"),
+        "gent+plur+masc": (-2, "ů"),
+        "datv+plur+masc": (-2, "ům"),
+        "accs+plur+masc": (-2, "e"),
+        "loct+plur+masc": (-2, "ech"),
+        "ablt+sing+femn": (-3, "ou"),
+        "datv+plur+femn": (-2, "ám"),
+        "ablt+sing+neut": (-2, "em"),
+        "datv+plur+neut": (-2, "ům"),
+        "loct+plur+neut": (-2, "ech")
+    },
+    "ADVB": {"ADVB": (-1, 'ě')},
+    "ADJF":
+    {
+        "nomn+plur+femn": (-1, "é"),
+        "accs+plur+femn": (-1, "é"),
+        "nomn+sing+neut": (-1, "é"),
+        "accs+sing+neut": (-1, "é"),
+        "nomn+plur+neut": (-1, "á"),
+        "accs+plur+neut": (-1, "á"),
 
-DEFAULT_UNITS = [
-    [
-        pymorphy2.units.DictionaryAnalyzer()
-    ],
-    pymorphy2.units.KnownPrefixAnalyzer(known_prefixes=VERB_PREFIXES),
-    [
-        pymorphy2.units.UnknownPrefixAnalyzer(),
-        pymorphy2.units.KnownSuffixAnalyzer()
-    ]
-]
+        "accs+sing+femn": (-1, "ou"),
+        "ablt+sing+femn": (-1, "ou"),
+        "loct+sing+masc": (-2, "ém"),
+        "loct+sing+neut": (-2, "ém"),
+        "loct+sing+femn": (-2, "é"),
+        "datv+sing+femn": (-2, "é"),
+        "gent+sing+femn": (-2, "é"),
 
+        "accs+plur+masc": (-2, "é"),
+        "loct+plur": (-2, "ých"),
+        "datv+plur": (-2, "ých"),
+        "ablt+plur": (-3, "ými"),
+    }
+}
 
 
 PL_FLAVOR = {
@@ -54,6 +88,36 @@ PL_FLAVOR = {
     }
 }
 
+
+SR_FLAVOR = {
+    "VERB": 
+    {
+    },
+    "NOUN":
+    {
+        "nomn+plur+masc": (-1, "ovi"),
+        "gent+plur+masc": (None, "a"),
+        # TODO: https://fastlanguagemastery.com/learn-foreign-languages/serbian-language/serbian-cases-of-nouns/
+    },
+    "ADJF":
+    {
+
+        "nomn+sing+masc": {"ny": "an"},
+        "gent+sing+masc": (-1, ""),
+        "accs+sing+masc+anim": (-1, ""),
+        "datv+sing+masc": (-1, ""),
+        "loct+sing+masc": (-1, ""),
+
+        "gent+sing+femn": (-2, "e"),
+        "ablt+sing+femn": (-2, "om"),
+
+        "loct+plur": (-2, "im"),
+        "ablt+plur": (-3, "im"),
+    }
+}
+
+
+
 RU_FLAVOR = {
     "VERB": 
     {
@@ -85,7 +149,7 @@ RU_FLAVOR = {
     }
 }
 
-def flavorise(word, golden_pos_tag, isv_morph, flavor):
+def flavorise(word, golden_pos_tag, isv_morph, flavor, ju):
     if golden_pos_tag == "PNCT":
         return word
     if golden_pos_tag == "ADVB":
@@ -101,11 +165,11 @@ def flavorise(word, golden_pos_tag, isv_morph, flavor):
     if not variants:
         return word
 
-    if golden_pos_tag == "VERB" and all(v.tag.person == "1per" for v in variants):
-        tags = variants[0].tag.grammemes  # no better way to choose
-        new_tags = set(tags) - {'alt-m'} | {'alt-u'}
-        # TODO XXX NE FUNGUJE
-        word = isv_morph.parse(word)[0].inflect(new_tags).word
+    if ju:
+        if golden_pos_tag == "VERB" and all(v.tag.person == "1per" for v in variants):
+            tags = variants[0].tag.grammemes  # no better way to choose
+            new_tags = set(tags) - {'alt-m'} | {'alt-u'}
+            word = isv_morph.parse(word)[0].inflect(new_tags).word
 
     if golden_pos_tag == "ADJF":
         variants = [variants[0]]  # no better way to choose
@@ -121,17 +185,28 @@ def flavorise(word, golden_pos_tag, isv_morph, flavor):
             for v in variants
         )
         if is_match:
-            suffix, addition = transform
-            return word[:suffix] + addition
+            if isinstance(transform, tuple):
+                suffix, addition = transform
+                return word[:suffix] + addition
+            if isinstance(transform, dict):
+                for base, replacement in transform.items():
+                    if word[-len(base):] == base:
+                        return word[:-len(base)] + replacement
 
     return word
 
 # no j/й/ь support
-lat_alphabet = "abcčdeěfghijklmnoprsštuvyzžęųćå"
-cyr_alphabet = "абцчдеєфгхијклмнопрсштувызжяуча"
+lat_alphabet = "abcčdeěfghijklmnoprsštuvyzžęųćåńľŕ"
+cyr_alphabet = "абцчдеєфгхијклмнопрсштувызжяучанлр"
 lat2cyr_trans = str.maketrans(lat_alphabet, cyr_alphabet)
-pol_alphabet = "abcčdeěfghijklmnoprsštuwyzżęąco"
+pol_alphabet = "abcčdeěfghijklmnoprsštuwyzżęąconlr"
 lat2pol_trans = str.maketrans(lat_alphabet, pol_alphabet)
+
+def srb_letter_change(word):
+    word = word.replace('ć', "ћ").replace('dž', "ђ").replace("ę", "е")
+    word = word.translate(lat2cyr_trans)
+
+    return word.replace('ы', "и").replace('нј', "њ").replace('лј', "љ")
 
 def pol_letter_change(word):
     word = word.translate(lat2pol_trans)
@@ -146,7 +221,45 @@ def pol_letter_change(word):
             .replace('dż', "dz")
     )
 
+def cz_letter_change(word):
+    return (word.replace('ę', "ě")
+            .replace('ų', "u")
+            .replace('šč', "št")
+            .replace('rje', "ří")
+            .replace('rj', "ř")
+            .replace('rě', "ře")
+            .replace('ri', "ři")
+            .replace('đ', "z")
+            .replace('å', "a")
+            .replace('h', "ch")
+            .replace('g', "h")
+            .replace('ć', "c")
+            .replace('kě', "ce")
+            .replace('gě', "ze")
+            .replace('lě', "le")
+            .replace('sě', "se")
+            .replace('hě', "še")
+            .replace('cě', "ce")
+            .replace('zě', "ze")
+            .replace('nju', "ni")
+            .replace('nj', "ň")
+            .replace('tje', "tí")
+            .replace('dje', "dí")
+            .replace('lju', "li")
+            .replace('ču', "či")
+            .replace('cu', "ci")
+            .replace('žu', "ži")
+            .replace('šu', "ši")
+            .replace('řu', "ři")
+            .replace('zu', "zi")
+            .replace('ijejų', "í")
+            .replace('ija', "e")
+            .replace('ijų', "i")
+            .replace('ij', "í")
+    )
+
 def rus_letter_change(word):
+    word = word.replace("ń", "нь").replace("ľ", "ль")
     word = word.translate(lat2cyr_trans)
     return (word.replace('ју', "ю").replace('ја', "я").replace('јо', "ё")
             .replace('ији', "ии")
@@ -163,19 +276,9 @@ if __name__ == "__main__":
     parser.add_argument('path')
     args = parser.parse_args()
 
-    isv_morph = pymorphy2.MorphAnalyzer(args.path, units=DEFAULT_UNITS)
+    isv_morph = pymorphy2.MorphAnalyzer(os.path.join(args.path, "out_isv_etm"), units=DEFAULT_UNITS)
 
-    if False:
-        text = 'Такоже то може быти помочно за развиту флаворизацију Теоретично тој текст в развитој русској флаворизацији буде изгледати тако'.split(" ")
-        tags = 'ADVB NPRO VERB VERB ADJF PREP ADJF NOUN ADVB NPRO NOUN PREP ADJF ADJF NOUN VERB VERB ADVB'.split(" ")
-        assert len(text) == len(tags)
-        for word, tag in zip(text, tags):
-            raw_flavorized = flavorise(word, tag, isv_morph, RU_FLAVOR)
-            print(rus_letter_change(raw_flavorized), end=" ")
-        # will print:
-        # Такоже то может быть помочное за развитую флаворизацию Теоретично той текст в развитой русской флаворизации будет изгледать тако 
-
-    text = 'myslim že to bųde pomoćno za råzvitų flavorizacijų . Toj tekst v råzvitoj {LANG} flavorizaciji bųde izględati tako . Take prěměny mogųt pomagati v učenju i råzuměnju medžuslovjanskogo języka i drugyh slovjanskyh językov . Takože to jest važny krok v tvorjenju mehanizma avtomatičnogo prěklada .'.split(" ")
+    text = 'myslim že to bųde pomoćno za råzvitų flavorizacijų . Toj tekst v råzvitoj {LANG} flavorizaciji bųde izględati tako . Take prěměny mogųt pomagati v učeńju i råzuměńju medžuslovjańskogo języka i drugyh slovjańskyh językov . Takože to jest važny krok v tvorjeńju mehanizma avtomatičnogo prěklada .'.split(" ")
 
     tags = ('VERB CONJ NPRO VERB ADVB PREP ADJF NOUN PNCT ' 
             'NPRO NOUN PREP ADJF ADJF NOUN VERB VERB ADVB PNCT '
@@ -186,20 +289,24 @@ if __name__ == "__main__":
     print("ЖРЛО")
     print("> " + " ".join(text))
     print()
-    print("РЕЗУЛТАТ (русскы)")
-    print(">", end=" ")
-    for word, tag in zip(text, tags):
-        if word == "{LANG}": word = "russkoj"
-        raw_flavorized = flavorise(word, tag, isv_morph, RU_FLAVOR)
-        print(rus_letter_change(raw_flavorized), end=" ")
-    print()
-    print("РЕЗУЛТАТ (польскы)")
-    print(">", end=" ")
-    for word, tag in zip(text, tags):
-        if word == "{LANG}": word = "poljskoj"
-        raw_flavorized = flavorise(word, tag, isv_morph, PL_FLAVOR)
-        print(pol_letter_change(raw_flavorized), end=" ")
-    print()
+    ALL_LANG_DATA = [
+            {'nomn': 'русскы', 'loct': 'russkoj', 'flavor': RU_FLAVOR, 'letter_change': rus_letter_change, 'ju': True},
+            {'nomn': 'польскы', 'loct': 'poljskoj', 'flavor': PL_FLAVOR, 'letter_change': pol_letter_change, 'ju': True},
+            {'nomn': 'чешскы', 'loct': 'češskoj', 'flavor': CS_FLAVOR, 'letter_change': cz_letter_change, 'ju': False},
+            {'nomn': 'србскы', 'loct': 'srbskoj', 'flavor': SR_FLAVOR, 'letter_change': srb_letter_change, 'ju': False},
+    ]
+    for lang_data in ALL_LANG_DATA:
+        print(f"РЕЗУЛТАТ ({lang_data['nomn']})")
+        print(">", end=" ")
+        for word, tag in zip(text, tags):
+            if word == "{LANG}": word = lang_data['loct']
+            raw_flavorized = flavorise(word, tag, isv_morph, lang_data['flavor'], lang_data['ju'])
+            func = lang_data['letter_change']
+            print(func(raw_flavorized), end=" ")
+        print()
+
+    variants = [v for v in isv_morph.parse("idti")]
+    print("\n".join(str(v) for v in variants))
 
     if False:
         variants = [v for v in isv_morph.parse("razvitoj") if "ADJF" in v.tag]
