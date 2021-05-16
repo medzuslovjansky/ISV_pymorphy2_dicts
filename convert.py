@@ -252,7 +252,6 @@ class Lemma(object):
         return (self.word,) + tuple(self.common_tags)
 
     def add_form(self, form):
-        # print("lemma_form", self.lemma_form.form, '->', form)
         if self.common_tags is not None:
             self.common_tags = self.common_tags.intersection(form.tags)
         else:
@@ -513,7 +512,6 @@ def yield_all_verb_forms(forms_obj, pos, base):
 def iterate_json(forms_obj, pos_data, base):
     pos = infer_pos(pos_data)
     if isinstance(forms_obj, str) or pos is None:
-        # print(base, pos, pos_data)
         return base, pos_data
 
     if "adj" in pos:
@@ -614,15 +612,15 @@ class Dictionary(object):
                     isv_lemma_current = isv_lemma_current.strip()
                     details_set = set(getArr(pos)) | add_tag
                     # if infer_pos is None, then fallback to the first form
-                    pos = infer_pos(details_set) or pos
-                    if pos == "noun": 
+                    local_pos = infer_pos(details_set) or pos
+                    if local_pos == "noun": 
                         details_set |= {'noun'}
 
                     if not isinstance(forms_obj, dict):
                         if forms_obj != '':
                             # add isolated lemma
 
-                            if pos in INDECLINABLE_POS and " " not in isv_lemma_current:
+                            if local_pos in INDECLINABLE_POS and " " not in isv_lemma_current:
                                 current_lemma = Lemma(
                                     isv_lemma_current,
                                     lemma_form_tags=details_set,
@@ -632,12 +630,6 @@ class Dictionary(object):
                                     tags=details_set,
                                 ))
                                 self.add_lemma(current_lemma)
-                                if False and isv_lemma_current == "sam":
-                                    print(pos, isv_lemma, add_tag, forms_obj)
-                                    print(pos in INDECLINABLE_POS and " " not in isv_lemma_current)
-                                    print(details_set)
-                                    print(current_lemma)
-                                    raise NameError
                             continue
                     if " " in isv_lemma_current and isinstance(forms_obj, dict):
                         splitted = isv_lemma_current.split()
@@ -672,28 +664,20 @@ class Dictionary(object):
                                 single_form,
                                 tags=tag_set | add_tag,
                             ))
-                        if pos in {"noun", "numeral"}:
+                        if local_pos in {"noun", "numeral"}:
                             number_forms |= {one_tag for one_tag in tag_set if one_tag in ['singular', 'plural']}
                     if len(number_forms) == 1:
                         if number_forms != {"singular"} and number_forms != {"plural"}:
                             print(number_forms, current_lemma.lemma_form.form)
-                            raise NameError
+                            raise AssertionError
                         numeric = {"Sgtm"} if number_forms == {"singular"} else {"Pltm"}
                         current_lemma.common_tags |= numeric
-                    if pos == "verb":
+                    if local_pos == "verb":
                         if forms_obj['infinitive'].replace("ì", "i") != isv_lemma_current:
                             current_lemma.lemma_form.form = forms_obj['infinitive']
-                    if pos == "pronoun":
+                    if local_pos == "pronoun":
                         # this will be processed later
                         pass
-                    # TODO: sth is wrong here... :(
-                    if "femn" in details_set and word_id == "18571":
-                        print(pos, isv_lemma_current, add_tag, forms_obj)
-                        print(current_lemma.lemma_form.tags)
-                        print(current_lemma)
-                        for k, translate_func in translation_functions.items():
-                            print(current_lemma.lemma_form.form, translate_func(current_lemma.lemma_form.form))
-                        # raise NameError
                     self.add_lemma(current_lemma)
         print(counter_multiword)
         print(counter_multiword_verb)
@@ -713,14 +697,8 @@ class Dictionary(object):
 
         for i, lemma in enumerate(self.lemmas.values()):
             lemma_xml = lemma.export_to_xml(i + 1, tag_set_full, lang=lang)
-            if lemma.lemma_form.form == "zapad":
-                print(ET.tostring(lemma_xml))
-                print(i+1)
             if lemma_xml is not None:
-                # if "NPRO" in lemma.lemma_form.tags:
-                # if "NPRO" in str(lemma_xml):
                 if "pron" in lemma.lemma_form.tags:
-                    # print(lemma.lemma_form.tags, lemma.lemma_form.form)
                     signature = "|".join(
                         f"{k}: {v[0].form}" for i, (k, v) in enumerate(lemma.forms.items())
                         if i != 0
