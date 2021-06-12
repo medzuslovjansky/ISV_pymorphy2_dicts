@@ -463,8 +463,12 @@ def yield_all_verb_forms(forms_obj, pos, base):
         for entry, one_tag in zip(forms_obj[time], tags):
             if entry.endswith(" (je)"):
                 entry = entry[:-5] + "," + "je"
-            # TODO: check em i vem
-            for subentry, add_tag in zip(entry.split(","), [{"alt-u"}, {'alt-m'}]):
+
+            subentries = entry.split(",")
+            subentry_tags = [{"V-ju"}, {'V-m'}]
+            if len(subentries) == 1:
+                subentry_tags = [set()]
+            for subentry, add_tag in zip(subentries, subentry_tags):
                 yield subentry, pos | {time} | add_tag | one_tag
 
     # ====== Imperative ======
@@ -490,11 +494,17 @@ def yield_all_verb_forms(forms_obj, pos, base):
             .replace(" sę", "")
             .replace(",", "").replace("(", "") .replace(")", "")
             .split(" "))
+
+        subentry_tags = [{"V-ju"}, {'V-m'}]
+        if len(parts) == 1:
+            subentry_tags = [set()]
+
         for i, entry in enumerate(parts):
             if i >= 6:
                 print(forms_obj)
                 raise AssertionError
-            current_tag = tags[i % 3] | ({"alt-form"} if i >= 3 else set())
+
+            current_tag = tags[i % 3] | subentry_tags[i >= 3]
             if i % 3 == 0:
                 base_part = entry
                 yield entry, pos | meta_tag | current_tag
@@ -506,7 +516,7 @@ def yield_all_verb_forms(forms_obj, pos, base):
                 yield full_entry, pos | meta_tag | current_tag
 
     # ====== Gerund ======
-    yield forms_obj['gerund'], pos | {"NOUN", "V-be"}
+    yield forms_obj['gerund'], pos | {"NOUN", "V2NOUN"}
 
 
 def iterate_json(forms_obj, pos_data, base):
@@ -598,7 +608,7 @@ class Dictionary(object):
                 if word_id == "36649":
                     pos = "f."
 
-                add_tags = [{f"alt{form_num+1}"} for form_num, _ in enumerate(forms_obj_array)]
+                add_tags = [{f"VF-{form_num+1}"} for form_num, _ in enumerate(forms_obj_array)]
 
                 if len(add_tags) == 1:
                     add_tags = [set()]
@@ -659,7 +669,11 @@ class Dictionary(object):
                         if len(all_forms) > 2:
                             print(isv_lemma_current, all_forms)
                             raise NameError
-                        for single_form, add_tag in zip(all_forms, [set(), {"alt-form"}]):
+                        all_tags = [{f"V-flex-{form_num+1}"} for form_num, _ in enumerate(all_forms)]
+
+                        if len(all_forms) == 1:
+                            all_tags = [set()]
+                        for single_form, add_tag in zip(all_forms, all_tags):
                             current_lemma.add_form(WordForm(
                                 single_form,
                                 tags=tag_set | add_tag,

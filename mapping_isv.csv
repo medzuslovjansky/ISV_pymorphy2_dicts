@@ -18,9 +18,10 @@ ANim;категория живости;aux;;;ANim;
 indecl;не изменяется;aux;;;Fixd;
 bad;искажение;aux;;;Dist;TODO: ведаjу
 refl;;aux;;;Refl;
-alt-m;алтернативна форма на -m;aux;;;alt-m;
-alt-u;алтернативна форма на -ju;aux;;;alt-u;
-alt-form;алтернативна форма именника;aux;;;alt-form;
+V-m;алтернативна форма на -m;aux;;;V-m;
+V-ju;алтернативна форма на -ju;aux;;;V-ju;
+VF-1;алтернативна форма;aux;;;VF-1;
+VF-2;алтернативна форма;aux;;;VF-2;
 anim;одушевлённое;ANim;;;anim;
 inan;неодушевлённое;ANim;;;inan;
 slang;сленг;aux;;;Slng;TODO: фунгуjе
@@ -29,9 +30,8 @@ pers;особовий (займенник);aux;;;pers;
 form-full;;aux;;;form-full;njego
 form-regl;;aux;;;form-regl;jego
 form-short;;aux;;;form-short;go
-alt;альтернативний правопис;aux;;;alt;TODO
-alt1;альтернативны форм 1;aux;;;alt1;
-alt2;альтернативны форм 2;aux;;;alt2;
+V-flex-1;альтернативны форм 1;aux;;;V-flex-1;
+V-flex-2;альтернативны форм 2;aux;;;V-flex-2;
 noun;именник;post;v_naz;anim,inanim;NOUN;
 pron;заименник;post;v_naz;;NPRO;
 verb;глагол;post;inf;perf,imperf;VERB;
@@ -90,15 +90,7 @@ conjunction;;;;;conj;
 pronoun;;;;;NPRO;
 numeral;;;;;NUMR;
 interjection;;;;;INTJ;
-m/f;;;;;masc;костылище
 ipf/pf;;;;;perf;костылище
-req_case;требуjє падежа;aux;;;req_case;Наразі відсутний в OpenCorpora
-(+1);потребує називного;req_case;;;rv_nomn;
-(+2);потребує родового;req_case;;;rv_gent;
-(+3);потребує давального;req_case;;;rv_datv;
-(+4);потребує знахідного;req_case;;;rv_accs;
-(+5);потребує орудного;req_case;;;rv_ablt;
-(+6);потребує місцевого;req_case;;;rv_loct;
 Abbr;аббревиатура;aux;;;Abbr;
 past;минулий час;tense;;;past;
 future;будучи час;tense;;;futr;
@@ -111,14 +103,9 @@ impr;наказовий спосіб;mood;;;impr;
 actv;активний;voice;;;actv;
 pasv;пасивний;voice;;;pssv;
 INFN;початкова форма дієслова;verb_type;;;infn;
-V-be;одглаголно име;aux;;;V-be;
+V2NOUN;одглаголно име;aux;;;V2NOUN;
 comparative;порівняльна форма;forms;;;COMP;
 forms;степені порівняння;aux;;;forms;
 positive;базова форма;forms;;;compb;
 conditional;кондиционал;tense;;;cond;
-
-
-
-
-
-
+particle;честица;post;;;PRCL;

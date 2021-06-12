@@ -13,7 +13,7 @@ def dodavaj_bukvy(word, etm_morph):
     return "/".join(set(corrected))
 
 
-def spellcheck_text(paragraph, strict_std_morph, std_morph):
+def spellcheck_text(paragraph, std_morph):
     delimiters = BASE_ISV_TOKEN_REGEX.finditer(paragraph)
     proposed_corrections = []
     for delim in delimiters:
@@ -24,9 +24,10 @@ def spellcheck_text(paragraph, strict_std_morph, std_morph):
         confident_correction = None
 
         if is_word:
-            is_known = strict_std_morph.word_is_known(token)
-            candidates = [f.word for f in std_morph.parse(token)]
-            print(token, candidates)
+            is_known = True
+            candidates = set([f.word for f in std_morph.parse(token)])
+            if candidates != {token} or not std_morph.word_is_known(token):
+                is_known = False
             if len(set(candidates)) >= 1:
                 corrected = "/".join(set(candidates))
 
@@ -38,6 +39,18 @@ def spellcheck_text(paragraph, strict_std_morph, std_morph):
         span_data = (delim.start(), delim.end(), markup)
         yield span_data, confident_correction
 
+
+def perform_spellcheck(text, std_morph):
+    data = list(spellcheck_text(text, std_morph))
+    spans = [entry[0] for entry in data if entry[0][2]]
+    proposed_corrections = [entry[1] for entry in data if entry[1]]
+    return text, spans, proposed_corrections
+
+
+def print_spellcheck(text, std_morph):
+    text, spans, proposed_corrections = perform_spellcheck(text, std_morph)
+    ipymarkup.show_span_ascii_markup(text, spans, width=79)
+    print("\n".join([f"{k+1}: {v}" for k, v in enumerate(proposed_corrections)]))
 
 
 if __name__ == "__main__":
@@ -87,20 +100,6 @@ if __name__ == "__main__":
     print(text_full)
     print()
 
-
-    strict_std_morph = pymorphy2.MorphAnalyzer(
-        path+"out_isv_lat",
-        units=DEFAULT_UNITS,
-        char_substitutes={}
-    )
-
     text = "Biblioteka pymorphy2 jest napisana za jezyk Python v 2012 letu. Ona jest ne jedino lemmatizer, napravdu ona jest morfologičny analizator i generator (to znači že biblioteka uměje razuměti i budovati fleksiju slov). Ona ima poddržku russkogo jezyka i eksperimentalnu poddržku ukrajinskogo jezyka."
-    print()
-    data = list(spellcheck_text(text, strict_std_morph, std_morph))
-    print(data)
-    print()
-    spans = [entry[0] for entry in data if entry[0][2]]
-    proposed_corrections = [entry[1] for entry in data if entry[1]]
-    ipymarkup.show_span_ascii_markup(text, spans, width=79)
-    print("\n".join([f"{k+1}: {v}" for k, v in enumerate(proposed_corrections)]))
+    print_spellcheck(text, std_morph)
 
