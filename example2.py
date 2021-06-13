@@ -49,6 +49,13 @@ def perform_spellcheck(text, std_morph):
 
 def print_spellcheck(text, std_morph):
     text, spans, proposed_corrections = perform_spellcheck(text, std_morph)
+    print("let text = ", text)
+    print("")
+    print("let spans = ", [list(entry) for entry in spans])
+    print("")
+    print("let corrections = ", proposed_corrections)
+    print("")
+
     ipymarkup.show_span_ascii_markup(text, spans, width=79)
     print("\n".join([f"{k+1}: {v}" for k, v in enumerate(proposed_corrections)]))
 
@@ -101,5 +108,7 @@ if __name__ == "__main__":
     print()
 
     text = "Biblioteka pymorphy2 jest napisana za jezyk Python v 2012 letu. Ona jest ne jedino lemmatizer, napravdu ona jest morfologičny analizator i generator (to znači že biblioteka uměje razuměti i budovati fleksiju slov). Ona ima poddržku russkogo jezyka i eksperimentalnu poddržku ukrajinskogo jezyka."
+    text = "Biblioteka pymorphy2 jest napisana za jezyk Python v 2012 letu. Ona imaje nekoliko osoblivostej, ktore delajut jej ukoristanje za MS mnogo uměstnym."
+
     print_spellcheck(text, std_morph)
 
