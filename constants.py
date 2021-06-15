@@ -7,6 +7,10 @@ VERB_PREFIXES = [
     'sȯ', 's', 'u', 'vȯ', 'vo', 'v', 'vȯz', 'voz', 'vy', 'za',
 ]
 
+CYR_LETTER_SUBS = {
+    "н": "њ", "л": "љ", "е": "є", "и": "ы"
+}
+
 SIMPLE_DIACR_SUBS = {
     'e': 'ě', 'c': 'č', 'z': 'ž', 's': 'š',
 }
