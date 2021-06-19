@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="utf-8" />
+<style>
+body {
+  margin: 15px;
+}
+
+div.search span,
+div.search input[name="keyword"] {
+  display: block;
+}
+
+div.search input[name="keyword"] {
+  margin-top: 4px;
+}
+
+div.panel {
+  margin-bottom: 15px;
+}
+
+div.panel .panel-body p:last-child {
+  margin-bottom: 0;
+}
+
+mark {
+  padding: 0;
+}
+
+mark.unknown {
+  background: #ffcccb;
+}
+mark.one_option {
+  background: #bca9d0;
+}
+mark.fixed {
+  background: #e6e6fa;
+}
+mark.many_options {
+  background: #ffff66;
+}
+
+[data-tooltip]:before {            
+    position : absolute;
+    content : attr(data-tooltip);
+    opacity : 0;
+    background: #9678b6;
+	border: 2px solid #333;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 2px 2px 1px silver;    
+	
+}
+[data-tooltip]:hover:before {        
+    opacity : 1;
+	margin-top: -50px;
+    margin-left: 20px;    
+}
+[data-tooltip]:not([data-tooltip-persistent]):before {
+    pointer-events: none;
+}
+
+</style>
+<link rel="stylesheet" media="screen" href="https://fontlibrary.org//face/elisabethische" type="text/css"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.es6.min.js"></script>
+</head>
+
+
+<h2>Avtododavanje diakritiky: bazovano na <a href="https://markjs.io/" target="_blank">mark.js</a>, pymorphy2 i Flask</h2>
+
+
+
+
+
+<textarea name="text" rows="6" cols="80" id="text" class="v" spellcheck="false">
+Biblioteka pymorphy2 jest napisana za jezyk Python v 2012 letu. Ona imaje nekoliko osoblivostej, ktore delajut jej ukoristanje za MS mnogo uměstnym.
+
+Majk rěšil ne brati četyridesetu cigaru: proigral fazanu v šahy na žalost.
+
+Hču prěporučiti: gledi pěše Troicky most v gradu Čeljabinsku, žeđam foto za ženu.
+
+По мојему мненју, цел јест цељ. Чи хочеш ли скљанку чаја?
+</textarea>
+
+<h3>Please select orthography the text should conform to</h3>
+
+<input type="radio" class="abeceda_select" name="abeceda_select" value="cyr" /> Кирилицеју
+<input type="radio" class="abeceda_select" name="abeceda_select" value="lat" checked /> Standardnoju latiniceju
+<input type="radio" class="abeceda_select" name="abeceda_select" value="etm" /> Etimologičnojų abecedojų
+
+<!--
+<fieldset><table id="zs" border="0">
+	<tbody><tr>
+		<td><input id="zs_0" type="radio" name="zs" value="0"><label for="zs_0">Заглавные</label></td>
+	</tr><tr>
+		<td><input id="zs_1" type="radio" name="zs" value="1"><label for="zs_1">Строчные</label></td>
+	</tr><tr>
+		<td><input id="zs_2" type="radio" name="zs" value="2" checked="checked"><label for="zs_2">Как есть</label></td>
+	</tr>
+</tbody></table></fieldset> -->
+
+<button id="calc" onclick="sendData()">Prověriti pravopis</button>
+
+<div class="panel panel-default">
+  <div class="panel-body">
+    <p>
+		<small>The data is obtained from pymorphy2 and rendered in HTML. Some of elements are clickable</small>
+    </p>
+  </div>
+</div>
+
+<div class="panel panel-default">
+  <div class="panel-body context">
+    <p>
+      
+    </p>
+  </div>
+</div>
+
+
+<script>
+// Create an instance of mark.js and pass an argument containing
+// the DOM object of the context (where to search for matches)
+var markInstance = new Mark(document.querySelector(".context"));
+
+
+async function postData() {
+  const data = document.getElementById("text").value
+  const morph = document.querySelector('input[name="abeceda_select"]:checked').value;
+
+  const sendData = JSON.stringify({"text": data, "abeceda": morph});
+
+  const response = await fetch("/koriguj", {
+    method: 'POST',
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+    credentials: 'same-origin', // include, *same-origin, omit
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+    body: sendData // body data type must match "Content-Type" header
+  });
+  return response.json(); // parses JSON response into native JavaScript objects
+}
+
+function sendData() {
+  postData().then(data => {
+      console.log(data); // JSON data parsed by `data.json()` call
+	  renderData(data['text'], data['spans'], data['corrections'])
+  });
+}
+
+
+function renderData(text, spans, corrections) {
+	document.querySelector(".context").textContent = text
+	// mark all unknown words
+	let unk_ranges = spans.filter(entry => entry[2].includes("^")).map(entry => {
+		return {"start": entry[0], "length": entry[1]-entry[0]}
+	})
+	markInstance.markRanges(unk_ranges, {"className": "unknown"})
+
+	// mark all words that could be changed easily
+	// let fixable_ranges = spans.filter(entry => !entry[2].includes("^")).map(entry => {
+	// return {"start": entry[0], "length": entry[1]-entry[0]}
+	// })
+	let fixable_ranges = spans.filter(entry => !entry[2].includes("^"))
+	fixable_ranges.forEach(entry => {
+		console.log(entry)
+		// abusing js type coercion 'coz this is stupid prototype
+		let single_range = [{"start": entry[0], "length": entry[1]-entry[0]}]
+		let correction = corrections[entry[2] - 1]
+		console.log(correction)
+		if (correction.includes("/")) {
+			markInstance.markRanges(single_range, {
+				className: "many_options", 
+				each: el => {el.setAttribute('data-tooltip', correction)}
+				// each: el => {el.setAttribute('title', correction)}
+			})
+		} else {
+			markInstance.markRanges(single_range, {
+				className: "one_option",
+				each: el => {
+					el.setAttribute('data-tooltip', correction);
+					el.setAttribute('onclick', 
+						"this.innerHTML = '" + correction + "'; this.removeAttribute('data-tooltip'); this.removeAttribute('onclick'); this.classList.remove('one_option'); this.classList.add('fixed');"
+					);
+				}
+			})
+		}
+	})
+}
+
+</script>
+
+
+
