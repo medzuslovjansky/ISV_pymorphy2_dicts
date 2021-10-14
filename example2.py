@@ -1,6 +1,5 @@
-import pymorphy2
 import argparse
-from constants import VERB_PREFIXES, SIMPLE_DIACR_SUBS, ETM_DIACR_SUBS, DEFAULT_UNITS, BASE_ISV_TOKEN_REGEX
+from isv_nlp_utils.constants import BASE_ISV_TOKEN_REGEX, create_analyzers_for_every_alphabet
 import ipymarkup   # pip install ipymarkup
 
 
@@ -61,23 +60,14 @@ def print_spellcheck(text, std_morph):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-    description='Kludge Spellcheck Example')
+    parser = argparse.ArgumentParser(description='Kludge Spellcheck Example')
     parser.add_argument('path')
     args = parser.parse_args()
     path = args.path
 
-    std_morph = pymorphy2.MorphAnalyzer(
-        path+"out_isv_lat",
-        units=DEFAULT_UNITS,
-        char_substitutes=SIMPLE_DIACR_SUBS
-    )
-
-    etm_morph = pymorphy2.MorphAnalyzer(
-        path+"out_isv_etm",
-        units=DEFAULT_UNITS,
-        char_substitutes=ETM_DIACR_SUBS
-    )
+    abecedas = create_analyzers_for_every_alphabet(path)
+    std_morph = abecedas['lat']
+    etm_morph = abecedas['etm']
 
     text = "ja funguju i razuměju avtododavanje etymologičnyh bukv"
 
@@ -107,8 +97,12 @@ if __name__ == "__main__":
     print(text_full)
     print()
 
-    text = "Biblioteka pymorphy2 jest napisana za jezyk Python v 2012 letu. Ona jest ne jedino lemmatizer, napravdu ona jest morfologičny analizator i generator (to znači že biblioteka uměje razuměti i budovati fleksiju slov). Ona ima poddržku russkogo jezyka i eksperimentalnu poddržku ukrajinskogo jezyka."
-    text = "Biblioteka pymorphy2 jest napisana za jezyk Python v 2012 letu. Ona imaje nekoliko osoblivostej, ktore delajut jej ukoristanje za MS mnogo uměstnym."
+    text = ("Biblioteka pymorphy2 jest napisana za jezyk Python v 2012 letu. "
+            "Ona jest ne jedino lemmatizer, napravdu ona jest morfologičny analizator i generator "
+            "(to znači že biblioteka uměje razuměti i budovati fleksiju slov). Ona ima poddržku "
+            "russkogo jezyka i eksperimentalnu poddržku ukrajinskogo jezyka.")
+    print_spellcheck(text, std_morph)
+    text = ("Biblioteka pymorphy2 jest napisana za jezyk Python v 2012 letu. "
+            "Ona imaje nekoliko osoblivostej, ktore delajut jej ukoristanje za MS mnogo uměstnym.")
 
     print_spellcheck(text, std_morph)
-

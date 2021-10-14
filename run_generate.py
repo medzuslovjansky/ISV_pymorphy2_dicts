@@ -7,6 +7,9 @@ from collections import Counter
 from convert import Dictionary, doubleform_signal
 from pathlib import Path
 
+import pymorphy2
+
+from isv_nlp_utils.constants import DEFAULT_UNITS, ETM_DIACR_SUBS
 
 REPEATED_FORMS = Counter()
 
@@ -24,7 +27,7 @@ RUN_BUILD_DICTS = True
 if RUN_EXPORT:
     subprocess.check_output(
         ["npm", "run", "generateParadigms"],
-        cwd=join(DIR,"interslavic"), shell=True
+        cwd=join(DIR, "interslavic"), shell=True
     )
 
 
@@ -61,27 +64,19 @@ if RUN_BUILD_DICTS:
         print('suffixes.json')
         print(Path(join(out_dir, 'suffixes.json')).stat().st_size)
 
-        print('suff.txt')
-        print(Path(join(DICTS_DIR, 'suff.txt')).stat().st_size)
+        # print('suff.txt')
+        # print(Path(join(DICTS_DIR, 'suff.txt')).stat().st_size)
 
-        print('paradigm.txt')
-        print(Path(join(DICTS_DIR, 'paradigm.txt')).stat().st_size)
-
-
-import pymorphy2
-from pymorphy2 import units
+        # print('paradigm.txt')
+        # print(Path(join(DICTS_DIR, 'paradigm.txt')).stat().st_size)
 
 
 out_dir_etm = join(DIR, "pymorphy2-dicts", "out_isv_etm")
 
 etm_morph = pymorphy2.MorphAnalyzer(
     out_dir_etm,
-    units=[pymorphy2.units.DictionaryAnalyzer(), pymorphy2.units.KnownSuffixAnalyzer()],
-    char_substitutes={
-        'e': 'ě', 'c': 'č', 'z': 'ž', 's': 'š',
-        'a': 'å', 'u': 'ų', 'č': 'ć', 'e': 'ę',
-        # 'dž': 'đ' # ne funguje
-    }
+    units=DEFAULT_UNITS,
+    char_substitutes=ETM_DIACR_SUBS
 )
 
 print(etm_morph.parse("ljudij"))
@@ -103,8 +98,6 @@ print(morph.parse("разумеју"))
 print(morph.parse("фунгујут"))
 print()
 
-
-
 phrase = "Тутчас можем писати на прдачном језыковєдском нарєчју"
 
 phrase = "нарєчје јест разумливо приблизно всим машинам без ученја"
@@ -114,7 +107,8 @@ phrase = "jа уже виджу нєколико проблемов буду ч�
 phrase = "писанйе jедним столбецем дозволjаjе додати информациjу односно двусмыслности"
 
 
-phrase = "чи можем ли jа говорити на прдачном језыковєдском нарєчју в тутом каналу буде ли то добро Jесм поправил нєкаке грєшкы од првого раза"
+phrase = "чи можем ли jа говорити на прдачном језыковєдском нарєчју в тутом каналу буде ли то добро"
+phrase = "Jесм поправил нєкаке грєшкы од првого раза"
 phrase = "понєктори користники сут измыслили нєколико прдачных нарєчиј"
 
 phrase = "мене приjати же тутчас jест канал в ктором jа можем писати на прдачном језыковєдском нарєчју"

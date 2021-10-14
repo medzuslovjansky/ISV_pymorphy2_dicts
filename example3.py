@@ -1,25 +1,29 @@
-import pymorphy2
 import argparse
 from collections import Counter
 
-from constants import VERB_PREFIXES, SIMPLE_DIACR_SUBS, ETM_DIACR_SUBS, DEFAULT_UNITS
+from isv_nlp_utils.constants import create_analyzers_for_every_alphabet
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-    description='Kludge Statistics Example')
+    parser = argparse.ArgumentParser(description='Kludge Statistics Example')
     parser.add_argument('path')
     args = parser.parse_args()
     path = args.path
 
-    etm_morph = pymorphy2.MorphAnalyzer(
-        path+"out_isv_etm",
-        units=DEFAULT_UNITS,
-        char_substitutes=ETM_DIACR_SUBS
+    etm_morph = create_analyzers_for_every_alphabet(path)['etm']
+
+    text = (
+        "Naša misija jest govoriti najvyše råzumlivo, "
+        "zato dělamo eksperimenty, čęsto pytajemo ljudi i diskutujemo o tom "
+        "kako ulěpšati naše govorenje. Zato takože čęsto napominamo ljudi, "
+        "kaki dělajųt pogrěšky, aby govorili drugo. To sųt vsegda sověty "
+        "i tvoje govorenje to nakraj jest tvoj izbor. My prosto staramo sę "
+        "byti možlivo najvyše råzumlivi"
     )
 
-    text = "Naša misija jest govoriti najvyše råzumlivo, zato dělamo eksperimenty, čęsto pytajemo ljudi i diskutujemo o tom kako ulěpšati naše govorenje. Zato takože čęsto napominamo ljudi, kaki dělajųt pogrěšky, aby govorili drugo. To sųt vsegda sověty a tvoje govorenje to nakraj jest tvoj izbor. My prosto staramo sę byti možlivo najvyše råzumlivi"
-
-    text = "on je pisal, ona je pisala, oni sut pisali. Ja jesm pisavša. Piši i ty, jerbo pisano slovo jest dobro. Generalno pisanje jest dobro"
+    text = (
+        "on je pisal, ona je pisala, oni sut pisali. Ja jesm pisavša. Piši i ty, "
+        "jerbo pisano slovo jest dobro. Generalno pisanje jest dobro"
+    )
     print(etm_morph.parse("pisanje"))
 
     cnt = Counter()
@@ -38,4 +42,3 @@ if __name__ == "__main__":
         for form in forms:
             cnt[form] += 1/len(forms)
     print(cnt)
-

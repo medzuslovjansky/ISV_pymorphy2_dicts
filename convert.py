@@ -1,10 +1,6 @@
 from __future__ import unicode_literals
 import re
-import sys
-import gzip
 import os.path
-import bz2file as bz2
-import codecs
 import logging
 import ujson
 
@@ -19,17 +15,20 @@ from blinker import signal
 
 doubleform_signal = signal('doubleform-found')
 
+
 def getArr(details_string):
-    return [x for x in details_string
-            .replace("./", '/')
-            .replace(" ", '')
-            .split('.')
-            if x != ''
-           ]
+    return [
+        x for x in details_string
+        .replace("./", '/')
+        .replace(" ", '')
+        .split('.')
+        if x != ''
+    ]
 
-diacr_letters = "žčšěйćżęųœ" 
+
+# TODO: move this to normalizacija.py or constants.py
+diacr_letters = "žčšěйćżęųœ"
 plain_letters = "жчшєjчжеуо"
-
 
 lat_alphabet = "abcčdeěfghijjklmnoprsštuvyzž"
 cyr_alphabet = "абцчдеєфгхийьклмнопрсштувызж"
@@ -44,17 +43,18 @@ std_alphabet = "eeaoučđrrlntdszioayeijo"
 
 nms2std_trans = str.maketrans(nms_alphabet, std_alphabet)
 
-extended_nms_alphabet = "áàâāíìîīĭıąǫũéēĕëèœóôŏöòĵĺļǉýłçʒřťȯďś"
-regular_etym_alphabet = "aaaaiiiiiiųųųeeėėėoooȯȯȯjľľľylczŕtods"
+extended_nms_alphabet = "áàâāíìîīĭıąǫũéēĕëèœóôŏöòȯĵĺļǉýłçʒřťďśńź"
+regular_etym_alphabet = "aaaaiiiiiiųųųeeėėėoooȯȯȯȯjľľľylczŕťďśńź"
 
 ext_nms2std_nms_trans = str.maketrans(extended_nms_alphabet, regular_etym_alphabet)
+
 
 def lat2cyr(thestring):
 
     # "e^" -> "ê"
     # 'z\u030C\u030C\u030C' -> 'ž\u030C\u030C'
     thestring = unicodedata.normalize(
-        'NFKC', 
+        'NFKC',
         thestring
     ).lower().replace("\n", " ")
 
@@ -76,17 +76,22 @@ def lat2cyr(thestring):
 
 
 def lat2etm(thestring):
-    return thestring.translate(ext_nms2std_nms_trans).strip()
+    # hack with dʒ
+    return thestring.translate(ext_nms2std_nms_trans).replace("đ", "dʒ").strip()
 
 
 def lat2std(thestring):
     return thestring.translate(nms2std_trans).replace("đ", "dž").strip()
+
 
 translation_functions = {
     "isv_cyr": lat2cyr,
     "isv_lat": lat2std,
     "isv_etm": lat2etm,
 }
+
+VERB_AUX_WORDS = {'(je)', 'sę', '(sųt)', 'ne'}
+
 
 def infer_pos(arr):
     if 'adj' in arr:
@@ -100,13 +105,13 @@ def infer_pos(arr):
     if 'prep' in arr:
         return 'preposition'
     if 'pron' in arr:
-        return 'pronoun';
+        return 'pronoun'
     if 'num' in arr:
-        return 'numeral';
+        return 'numeral'
     if 'intj' in arr:
-        return 'interjection';
+        return 'interjection'
     if 'v' in arr:
-        return 'verb';
+        return 'verb'
 
 
 def export_grammemes_description_to_xml(tag_set):
@@ -140,7 +145,7 @@ class TagSet(object):
         self.lt2opencorpora = {}
 
         with open(fname, 'rb') as fp:
-            r = DictReader(fp,delimiter=';')
+            r = DictReader(fp, delimiter=';')
 
             for tag in r:
                 # lemma form column represents set of tags that wordform should
@@ -190,13 +195,15 @@ class TagSet(object):
             return len(self.groups)
 
     def sort_tags(self, tags):
+        # TODO: this function is not used, but the output would be nicer if it were
         def inner_cmp(a, b):
             a_group = self._get_group_no(a)
             b_group = self._get_group_no(b)
 
+            # cmp is a built-in python function
             if a_group == b_group:
-                return cmp(a, b)
-            return cmp(a_group, b_group)
+                return cmp(a, b)  # noqa: F821
+            return cmp(a_group, b_group)  # noqa: F821
 
         return sorted(tags, cmp=inner_cmp)
 
@@ -298,7 +305,6 @@ class Lemma(object):
         l_form = ET.SubElement(lemma, "l", t=output_lemma_form)
         self._add_tags_to_element(l_form, common_tags, mapping)
 
-
         for forms in self.forms.values():
             for form in forms:
                 output_form = form.form.lower()
@@ -315,6 +321,7 @@ class Lemma(object):
                                           mapping)
 
         return lemma
+
 
 def yield_all_simple_adj_forms(forms_obj, pos):
     if "casesSingular" in forms_obj:
@@ -366,6 +373,7 @@ def yield_all_simple_adj_forms(forms_obj, pos):
                         yield content[0], {case, "plur", "neut", animatedness} | pos
                         yield content[0], {case, "plur", "femn", animatedness} | pos
 
+
 def yield_all_noun_forms(forms_obj, pos, columns):
     for case, data in forms_obj.items():
         for (form, form_name) in zip(data, columns):
@@ -376,7 +384,7 @@ def yield_all_noun_forms(forms_obj, pos, columns):
                     form_name = "plur"
                 if form_name == "masculine":
                     form_name = 'masc'
-                # TODO: 
+                # TODO:
                 if form_name == "feminine/neuter":
                     yield form, {case, 'femn'} | pos
                     yield form, {case, 'neut'} | pos
@@ -398,13 +406,10 @@ def yield_all_noun_forms(forms_obj, pos, columns):
                 else:
                     yield form, {case, form_name} | pos
 
-VERB_AUX_WORDS = {'(je)', 'sę', '(sųt)', 'ne'}
 
 def yield_all_verb_forms(forms_obj, pos, base):
 
     is_byti = forms_obj['infinitive'] == 'bytì'
-    # if forms_obj['infinitive'].replace("ì", "i") != base:
-        # print(forms_obj['infinitive'], base)
 
     # ====== Infinitive ======
     yield forms_obj['infinitive'], pos | {"INFN"}
@@ -441,7 +446,6 @@ def yield_all_verb_forms(forms_obj, pos, base):
             subentry = entry.split(" ")[0]
             yield subentry, pos | {time} | one_tag
 
-        
     # ====== Future ======
     # ['future']
     # future uses infinitive and aux verbs
@@ -488,12 +492,14 @@ def yield_all_verb_forms(forms_obj, pos, base):
         [{'actv', 'present'}, {'pssv', 'present'}, {'actv', 'past'}, {'pssv', 'past'}]
     ):
         # TODO: will fuck up if multi-word verb
-        parts = (forms_obj[time]
+        parts = (
+            forms_obj[time]
             .replace("ne ", "")
-            .replace("ši sá", "ša sę").replace("ši sé", "še sę")   # THIS MAKES PARSER NON STANDARD COMPLIANT
+            .replace("ši sá", "ša sę").replace("ši sé", "še sę")  # THIS IS A CHANGE FROM ORIGINAL LOGIC
             .replace(" sę", "")
             .replace(",", "").replace("(", "") .replace(")", "")
-            .split(" "))
+            .split(" ")
+        )
 
         subentry_tags = [{"V-ju"}, {'V-m'}]
         if len(parts) == 1:
@@ -521,11 +527,12 @@ def yield_all_verb_forms(forms_obj, pos, base):
 
 def iterate_json(forms_obj, pos_data, base):
     pos = infer_pos(pos_data)
+    pos_data = {x for x in pos_data if x != "m/f"}
     if isinstance(forms_obj, str) or pos is None:
         return base, pos_data
 
     if "adj" in pos:
-        yield from  yield_all_simple_adj_forms(forms_obj, pos_data)
+        yield from yield_all_simple_adj_forms(forms_obj, pos_data)
         content = forms_obj['comparison']
         yield content['positive'][0], {"positive"} | pos_data
 
@@ -556,7 +563,6 @@ def iterate_json(forms_obj, pos_data, base):
                 else:
                     yield form, pos_data
 
-
         elif forms_obj['type'] == 'noun':
             columns = forms_obj['columns']
             yield from yield_all_noun_forms(forms_obj['cases'], pos_data, columns)
@@ -579,9 +585,9 @@ def iterate_json(forms_obj, pos_data, base):
         yield from yield_all_noun_forms(forms_obj, pos_data, ['singular', 'plural'])
     return base, pos_data
 
-    
+
 base_tag_set = {}
-INDECLINABLE_POS = {'adverb', 'conjunction', 'preposition', 'interjection', 'particle', 'pronoun', 'numeral'} 
+INDECLINABLE_POS = {'adverb', 'conjunction', 'preposition', 'interjection', 'particle', 'pronoun', 'numeral'}
 
 
 class Dictionary(object):
@@ -603,10 +609,10 @@ class Dictionary(object):
                 forms_obj_array = ujson.loads(forms)
 
                 # HOTFIX TIME!
-                if word_id == "36454":
-                    pos = "adj."
                 if word_id == "36649":
-                    pos = "f."
+                    pass
+                if word_id == "6181":
+                    pass
 
                 add_tags = [{f"VF-{form_num+1}"} for form_num, _ in enumerate(forms_obj_array)]
 
@@ -615,6 +621,7 @@ class Dictionary(object):
 
                 isv_lemmas = isv_lemma.split(",")
                 if "m./f." in pos:
+                    # example: "6181" "križ","","m./f.","1","cross",
                     isv_lemmas = [isv_lemma, isv_lemma]
                     add_tags = [{'masc'}, {'femn'}]
                 for add_tag, forms_obj, isv_lemma_current in zip(add_tags, forms_obj_array, isv_lemmas):
@@ -623,7 +630,7 @@ class Dictionary(object):
                     details_set = set(getArr(pos)) | add_tag
                     # if infer_pos is None, then fallback to the first form
                     local_pos = infer_pos(details_set) or pos
-                    if local_pos == "noun": 
+                    if local_pos == "noun":
                         details_set |= {'noun'}
 
                     if not isinstance(forms_obj, dict):
@@ -669,7 +676,9 @@ class Dictionary(object):
                         if len(all_forms) > 2:
                             print(isv_lemma_current, all_forms)
                             raise NameError
-                        all_tags = [{f"V-flex-{form_num+1}"} for form_num, _ in enumerate(all_forms)]
+                        all_tags = [
+                            {f"V-flex-{form_num+1}"} for form_num, _ in enumerate(all_forms)
+                        ]
 
                         if len(all_forms) == 1:
                             all_tags = [set()]
@@ -679,7 +688,9 @@ class Dictionary(object):
                                 tags=tag_set | add_tag,
                             ))
                         if local_pos in {"noun", "numeral"}:
-                            number_forms |= {one_tag for one_tag in tag_set if one_tag in ['singular', 'plural']}
+                            number_forms |= {
+                                one_tag for one_tag in tag_set if one_tag in ['singular', 'plural']
+                            }
                     if len(number_forms) == 1:
                         if number_forms != {"singular"} and number_forms != {"plural"}:
                             print(number_forms, current_lemma.lemma_form.form)

@@ -1,0 +1,5 @@
+pymorphy2
+ujson
+unicodecsv
+blinker
+opencorpora-tools==0.6
